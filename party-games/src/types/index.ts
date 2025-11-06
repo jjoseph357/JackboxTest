@@ -136,7 +136,7 @@ export interface Bullet {
 }
 
 export interface RPSBRState {
-  phase: 'placement' | 'battle' | 'round-end' | 'game-end';
+  phase: 'placement' | 'ready-to-battle' | 'battle' | 'round-end' | 'game-end';
   tournamentRound: number;
   activePlayers: number[];
   eliminatedPlayers: { playerId: number; placement: number }[];
