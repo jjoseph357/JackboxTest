@@ -162,16 +162,10 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
       ...prev,
       placements: updatedPlacements,
       currentPlacer: isLastPlayer ? null : prev.currentPlacer! + 1,
+      phase: isLastPlayer ? 'ready-to-battle' : prev.phase,
     }));
 
     setSelectedPosition(null);
-
-    // If all players have placed, start battle with the complete placements
-    if (isLastPlayer) {
-      setTimeout(() => {
-        startBattle(updatedPlacements);
-      }, 100);
-    }
   };
 
   const startBattle = (placements: typeof state.placements = state.placements) => {
@@ -732,6 +726,34 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
           <p className="game__progress">
             Player {state.currentPlacer + 1} of {state.activePlayers.length}
           </p>
+        </Card>
+      </div>
+    );
+  }
+
+  if (state.phase === 'ready-to-battle') {
+    return (
+      <div className="game">
+        <h2 className="game__title">✊📄✂️ RPS Battle Royale</h2>
+        <p className="game__round">Tournament Round {state.tournamentRound}</p>
+        <Card>
+          <h3>All players have placed their objects!</h3>
+          <p style={{ textAlign: 'center', margin: '24px 0', fontSize: '18px', color: 'var(--text-secondary)' }}>
+            {state.activePlayers.length} player{state.activePlayers.length !== 1 ? 's' : ''} ready to battle
+          </p>
+
+          <canvas
+            ref={canvasRef}
+            width={GRID_SIZE}
+            height={GRID_SIZE}
+            className="rps__canvas"
+          />
+
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '24px' }}>
+            <Button onClick={() => startBattle()} size="large">
+              Start Battle!
+            </Button>
+          </div>
         </Card>
       </div>
     );
