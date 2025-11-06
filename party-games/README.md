@@ -4,8 +4,9 @@ A fun and engaging collection of party games inspired by Jackbox Party Packs! Pe
 
 ## 🎯 Features
 
-- **4 Unique Games** - Social deduction, storytelling, comedy, and strategy games
+- **5 Unique Games** - Social deduction, storytelling, comedy, strategy, and battle royale games
 - **Up to 16 Players** - Perfect for large groups
+- **Customizable Rounds** - Choose how many rounds to play each game
 - **Single Device** - One person hosts, everyone plays together
 - **All Ages Welcome** - Family-friendly content for everyone
 - **Beautiful UI** - Modern, colorful, and intuitive interface
@@ -66,6 +67,21 @@ A team-based strategy game where players complete missions together - but beware
 4. Selected players secretly choose to support or sabotage the mission
 5. Can the Agents identify the Saboteurs before it's too late?
 
+### ✊📄✂️ Rock Paper Scissors Battle Royale
+An epic battle royale where players place rock, paper, or scissors on a battlefield! Objects hunt their prey with rocks chasing scissors, scissors chasing paper, and paper chasing rocks. Survive elimination rounds to become the ultimate champion!
+
+- **Players:** 2-16
+- **Type:** Strategy/Battle Royale
+- **Duration:** ~15 minutes
+
+**How to Play:**
+1. Each player secretly places rock, paper, or scissors on the battlefield
+2. Once all placed, objects spawn and start moving toward their prey
+3. When objects collide, the winner survives (rock beats scissors, scissors beats paper, paper beats rock)
+4. Players whose object type survives advance to the next round
+5. Tournament continues with elimination rounds until one winner remains!
+6. Final leaderboard shows eliminations and placement for each player
+
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -123,11 +139,16 @@ npm run preview
 3. **Click Continue** to proceed to game selection
 
 ### Game Selection
-1. **Choose a game** from the 4 available options
+1. **Choose a game** from the 5 available options
 2. Each game card shows:
    - Game name and description
    - Number of players required
    - Whether you can play with your current player count
+
+### Round Selection
+1. **Choose how many rounds** you want to play (1-20 rounds)
+2. Default suggestions are provided based on the selected game
+3. For RPS Battle Royale, the game continues until one winner remains
 
 ### During the Game
 1. **The host controls the device** and follows on-screen instructions
@@ -163,6 +184,7 @@ npm run preview
 - **TypeScript** - Type-safe JavaScript
 - **Vite** - Fast build tool and dev server
 - **CSS3** - Custom styling with animations
+- **HTML5 Canvas** - For RPS BR battle visualization
 
 ### Project Structure
 ```
@@ -174,12 +196,14 @@ party-games/
 │   │   ├── Input.tsx
 │   │   ├── MainMenu.tsx
 │   │   ├── PlayerSetup.tsx
-│   │   └── GameSelect.tsx
+│   │   ├── GameSelect.tsx
+│   │   └── RoundSelect.tsx
 │   ├── games/           # Individual game implementations
 │   │   ├── SecretArtist.tsx
 │   │   ├── StoryRemix.tsx
 │   │   ├── FactFiction.tsx
-│   │   └── MissionMayhem.tsx
+│   │   ├── MissionMayhem.tsx
+│   │   └── RPSBR.tsx
 │   ├── types/           # TypeScript type definitions
 │   │   └── index.ts
 │   ├── utils/           # Helper functions and game data

@@ -949,3 +949,185 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #475569;
 }
+
+/* Round Select */
+.round-select {
+  background: var(--background-light);
+  padding: 48px;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-lg);
+}
+
+.round-select__title {
+  font-size: 36px;
+  text-align: center;
+  margin-bottom: 32px;
+  color: var(--text-primary);
+}
+
+.round-select__card {
+  margin-bottom: 32px;
+}
+
+.round-select__game {
+  text-align: center;
+  font-size: 18px;
+  margin-bottom: 24px;
+  color: var(--text-secondary);
+}
+
+.round-select__counter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  margin: 24px 0;
+}
+
+.round-select__count {
+  font-size: 72px;
+  font-weight: 800;
+  color: var(--primary-color);
+  min-width: 120px;
+  text-align: center;
+}
+
+.round-select__info {
+  text-align: center;
+  color: var(--text-secondary);
+  margin-top: 16px;
+}
+
+.round-select__info-box {
+  background: var(--surface);
+  padding: 24px;
+  border-radius: var(--border-radius);
+  margin: 24px 0;
+  text-align: center;
+}
+
+.round-select__info-box p {
+  margin: 8px 0;
+  font-size: 16px;
+}
+
+.round-select__actions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+
+/* RPS Battle Royale */
+.rps__canvas {
+  border: 3px solid var(--surface);
+  border-radius: var(--border-radius);
+  cursor: crosshair;
+  margin: 24px auto;
+  display: block;
+  background: var(--background);
+}
+
+.rps__type-select {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin: 24px 0;
+}
+
+.rps__battle-info {
+  text-align: center;
+  margin-top: 24px;
+}
+
+.rps__battle-info p {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 8px 0;
+}
+
+.rps__surviving-types {
+  background: var(--surface);
+  padding: 16px;
+  border-radius: var(--border-radius);
+  margin: 16px 0;
+  text-align: center;
+}
+
+.rps__type-badge {
+  display: inline-block;
+  margin: 8px;
+  padding: 8px 16px;
+  background: var(--primary-color);
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.rps__advancing-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.rps__player-item {
+  padding: 12px;
+  background: var(--surface);
+  border-radius: 8px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.rps__winner {
+  font-size: 36px;
+  text-align: center;
+  color: var(--success-color);
+  margin-bottom: 16px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.rps__leaderboard {
+  margin: 24px 0;
+}
+
+.rps__leaderboard-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  margin: 8px 0;
+  background: var(--surface);
+  border-radius: var(--border-radius);
+  transition: all 0.3s ease;
+}
+
+.rps__leaderboard-item--winner {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(99, 102, 241, 0.2) 100%);
+  border: 2px solid var(--success-color);
+}
+
+.rps__placement {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--primary-light);
+  min-width: 50px;
+}
+
+.rps__player-name {
+  flex: 1;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.rps__stats {
+  font-size: 16px;
+  color: var(--text-secondary);
+}
+
+.game__survivor-count {
+  font-size: 20px;
+  font-weight: 600;
+  text-align: center;
+  margin: 16px 0;
+  color: var(--success-color);
+}

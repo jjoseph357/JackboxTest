@@ -3,16 +3,27 @@ import type { AppScreen, GameType, Player } from './types';
 import { MainMenu } from './components/MainMenu';
 import { PlayerSetup } from './components/PlayerSetup';
 import { GameSelect } from './components/GameSelect';
+import { RoundSelect } from './components/RoundSelect';
 import { SecretArtist } from './games/SecretArtist';
 import { StoryRemix } from './games/StoryRemix';
 import { FactFiction } from './games/FactFiction';
 import { MissionMayhem } from './games/MissionMayhem';
+import { RPSBR } from './games/RPSBR';
 import './App.css';
+
+const gameNames: Record<GameType, string> = {
+  'secret-artist': '🎨 Secret Artist',
+  'story-remix': '📖 Story Remix',
+  'fact-fiction': '🤔 Fact or Fiction',
+  'mission-mayhem': '🕵️ Mission Mayhem',
+  'rps-br': '✊📄✂️ Rock Paper Scissors BR',
+};
 
 function App() {
   const [screen, setScreen] = useState<AppScreen>('menu');
   const [players, setPlayers] = useState<Player[]>([]);
   const [selectedGame, setSelectedGame] = useState<GameType | null>(null);
+  const [maxRounds, setMaxRounds] = useState<number>(3);
 
   const handleStartGame = () => {
     setScreen('player-setup');
@@ -25,6 +36,11 @@ function App() {
 
   const handleGameSelected = (game: GameType) => {
     setSelectedGame(game);
+    setScreen('round-select');
+  };
+
+  const handleRoundsSelected = (rounds: number) => {
+    setMaxRounds(rounds);
     setScreen('game');
   };
 
@@ -38,10 +54,15 @@ function App() {
     setScreen('menu');
     setPlayers([]);
     setSelectedGame(null);
+    setMaxRounds(3);
   };
 
   const handleBackToPlayerSetup = () => {
     setScreen('player-setup');
+  };
+
+  const handleBackToGameSelect = () => {
+    setScreen('game-select');
   };
 
   return (
@@ -61,20 +82,34 @@ function App() {
           />
         )}
 
+        {screen === 'round-select' && selectedGame && (
+          <RoundSelect
+            playerCount={players.length}
+            selectedGame={selectedGame}
+            gameName={gameNames[selectedGame]}
+            onComplete={handleRoundsSelected}
+            onBack={handleBackToGameSelect}
+          />
+        )}
+
         {screen === 'game' && selectedGame === 'secret-artist' && (
-          <SecretArtist players={players} onGameEnd={handleGameEnd} />
+          <SecretArtist players={players} maxRounds={maxRounds} onGameEnd={handleGameEnd} />
         )}
 
         {screen === 'game' && selectedGame === 'story-remix' && (
-          <StoryRemix players={players} onGameEnd={handleGameEnd} />
+          <StoryRemix players={players} maxRounds={maxRounds} onGameEnd={handleGameEnd} />
         )}
 
         {screen === 'game' && selectedGame === 'fact-fiction' && (
-          <FactFiction players={players} onGameEnd={handleGameEnd} />
+          <FactFiction players={players} maxRounds={maxRounds} onGameEnd={handleGameEnd} />
         )}
 
         {screen === 'game' && selectedGame === 'mission-mayhem' && (
-          <MissionMayhem players={players} onGameEnd={handleGameEnd} />
+          <MissionMayhem players={players} maxRounds={maxRounds} onGameEnd={handleGameEnd} />
+        )}
+
+        {screen === 'game' && selectedGame === 'rps-br' && (
+          <RPSBR players={players} onGameEnd={handleGameEnd} />
         )}
       </div>
     </div>
