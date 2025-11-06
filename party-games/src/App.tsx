@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import type { AppScreen, GameType, Player } from './types';
+import type { AppScreen, GameType, Player, RPSModifiers } from './types';
 import { MainMenu } from './components/MainMenu';
 import { PlayerSetup } from './components/PlayerSetup';
 import { GameSelect } from './components/GameSelect';
 import { RoundSelect } from './components/RoundSelect';
+import { ModifiersSelect } from './components/ModifiersSelect';
 import { SecretArtist } from './games/SecretArtist';
 import { StoryRemix } from './games/StoryRemix';
 import { FactFiction } from './games/FactFiction';
@@ -24,6 +25,14 @@ function App() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [selectedGame, setSelectedGame] = useState<GameType | null>(null);
   const [maxRounds, setMaxRounds] = useState<number>(3);
+  const [rpsModifiers, setRpsModifiers] = useState<RPSModifiers>({
+    growthFood: false,
+    movingFood: false,
+    bullets: false,
+    speedBoost: false,
+    respawns: false,
+    respawnCount: 1,
+  });
 
   const handleStartGame = () => {
     setScreen('player-setup');
@@ -41,7 +50,33 @@ function App() {
 
   const handleRoundsSelected = (rounds: number) => {
     setMaxRounds(rounds);
+    // For RPS BR, show modifiers selection
+    if (selectedGame === 'rps-br') {
+      setScreen('modifiers-select');
+    } else {
+      setScreen('game');
+    }
+  };
+
+  const handleModifiersSelected = (modifiers: RPSModifiers) => {
+    setRpsModifiers(modifiers);
     setScreen('game');
+  };
+
+  const handleSkipModifiers = () => {
+    setRpsModifiers({
+      growthFood: false,
+      movingFood: false,
+      bullets: false,
+      speedBoost: false,
+      respawns: false,
+      respawnCount: 1,
+    });
+    setScreen('game');
+  };
+
+  const handleBackToRoundSelect = () => {
+    setScreen('round-select');
   };
 
   const handleGameEnd = (updatedPlayers: Player[]) => {
@@ -92,6 +127,14 @@ function App() {
           />
         )}
 
+        {screen === 'modifiers-select' && selectedGame === 'rps-br' && (
+          <ModifiersSelect
+            onComplete={handleModifiersSelected}
+            onSkip={handleSkipModifiers}
+            onBack={handleBackToRoundSelect}
+          />
+        )}
+
         {screen === 'game' && selectedGame === 'secret-artist' && (
           <SecretArtist players={players} maxRounds={maxRounds} onGameEnd={handleGameEnd} />
         )}
@@ -109,7 +152,7 @@ function App() {
         )}
 
         {screen === 'game' && selectedGame === 'rps-br' && (
-          <RPSBR players={players} onGameEnd={handleGameEnd} />
+          <RPSBR players={players} modifiers={rpsModifiers} onGameEnd={handleGameEnd} />
         )}
       </div>
     </div>

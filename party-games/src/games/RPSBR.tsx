@@ -1,20 +1,32 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { Player, RPSBRState, RPSObject, RPSChoice } from '../types';
+import type { Player, RPSBRState, RPSObject, RPSChoice, RPSModifiers, FoodParticle, Bullet } from '../types';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { generateId } from '../utils/helpers';
 
 interface RPSBRProps {
   players: Player[];
+  modifiers: RPSModifiers;
   onGameEnd: (updatedPlayers: Player[]) => void;
 }
 
-const GRID_SIZE = 800;
+const GRID_SIZE = 1200;
 const OBJECT_SIZE = 40;
-const MOVEMENT_SPEED = 0.5;
-const BATTLE_DURATION = 30000; // 30 seconds
+const BASE_SPEED = 0.2;
+const BATTLE_DURATION = 45000; // 45 seconds
+const SPEED_BOOST_DURATION = 3000; // 3 seconds
+const SPEED_BOOST_MULTIPLIER = 2;
+const FOOD_SIZE = 15;
+const BULLET_SIZE = 20;
+const BULLET_SPEED = 0.3;
 
-export const RPSBR: React.FC<RPSBRProps> = ({ players, onGameEnd }) => {
+// Sound effects (basic implementation)
+const playSound = (type: 'eliminate' | 'collect' | 'boost' | 'respawn' | 'bullet') => {
+  // In a real implementation, you would load and play actual audio files
+  console.log(`🔊 ${type} sound`);
+};
+
+export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | undefined>(undefined);
   const battleEndedRef = useRef(false);
@@ -28,7 +40,10 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, onGameEnd }) => {
     placements: {},
     currentPlacer: 0,
     battleTime: 0,
-    playerStats: Object.fromEntries(players.map(p => [p.id, { kills: 0, roundsWon: 0 }])),
+    playerStats: Object.fromEntries(players.map(p => [p.id, { kills: 0, roundsWon: 0, respawnsUsed: 0 }])),
+    foodParticles: [],
+    bullets: [],
+    modifiers,
   }));
 
   const [selectedType, setSelectedType] = useState<RPSChoice>('rock');
@@ -74,11 +89,47 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, onGameEnd }) => {
     return nearest;
   };
 
-  const checkCollision = (obj1: RPSObject, obj2: RPSObject): boolean => {
+  const checkCollision = (obj1: { x: number; y: number; size: number }, obj2: { x: number; y: number; size: number }): boolean => {
     const dx = obj1.x - obj2.x;
     const dy = obj1.y - obj2.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
     return distance < (obj1.size + obj2.size) / 2;
+  };
+
+  // Initialize food and bullets
+  const initializeModifierObjects = () => {
+    const food: FoodParticle[] = [];
+    const bullets: Bullet[] = [];
+
+    if (modifiers.growthFood || modifiers.movingFood) {
+      const count = modifiers.movingFood ? 15 : 20;
+      for (let i = 0; i < count; i++) {
+        food.push({
+          id: generateId(),
+          x: Math.random() * (GRID_SIZE - 40) + 20,
+          y: Math.random() * (GRID_SIZE - 40) + 20,
+          vx: modifiers.movingFood ? (Math.random() - 0.5) * 0.4 : 0,
+          vy: modifiers.movingFood ? (Math.random() - 0.5) * 0.4 : 0,
+          size: FOOD_SIZE,
+          growth: 5,
+        });
+      }
+    }
+
+    if (modifiers.bullets) {
+      for (let i = 0; i < 3; i++) {
+        bullets.push({
+          id: generateId(),
+          x: Math.random() * (GRID_SIZE - 40) + 20,
+          y: Math.random() * (GRID_SIZE - 40) + 20,
+          vx: (Math.random() - 0.5) * BULLET_SPEED * 2,
+          vy: (Math.random() - 0.5) * BULLET_SPEED * 2,
+          size: BULLET_SIZE,
+        });
+      }
+    }
+
+    setState(prev => ({ ...prev, foodParticles: food, bullets }));
   };
 
   // Canvas click handler for placement
@@ -127,12 +178,18 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, onGameEnd }) => {
       type: placement.type,
       x: placement.x,
       y: placement.y,
+      vx: 0,
+      vy: 0,
       size: OBJECT_SIZE,
+      baseSize: OBJECT_SIZE,
       alive: true,
       kills: 0,
+      speedBoost: 0,
+      respawnsLeft: modifiers.respawns ? modifiers.respawnCount : 0,
     }));
 
     battleEndedRef.current = false;
+    initializeModifierObjects();
 
     setState(prev => ({
       ...prev,
@@ -140,6 +197,36 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, onGameEnd }) => {
       objects,
       battleTime: Date.now(),
     }));
+  };
+
+  const respawnObject = (obj: RPSObject) => {
+    if (!modifiers.respawns || obj.respawnsLeft <= 0) return false;
+
+    playSound('respawn');
+
+    // Find a safe spawn location
+    const x = Math.random() * (GRID_SIZE - 100) + 50;
+    const y = Math.random() * (GRID_SIZE - 100) + 50;
+
+    obj.x = x;
+    obj.y = y;
+    obj.alive = true;
+    obj.respawnsLeft--;
+    obj.size = obj.baseSize; // Reset size
+    obj.speedBoost = 0;
+
+    setState(prev => ({
+      ...prev,
+      playerStats: {
+        ...prev.playerStats,
+        [obj.playerId]: {
+          ...prev.playerStats[obj.playerId],
+          respawnsUsed: prev.playerStats[obj.playerId].respawnsUsed + 1,
+        },
+      },
+    }));
+
+    return true;
   };
 
   const endRound = (finalObjects: RPSObject[]) => {
@@ -155,28 +242,27 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, onGameEnd }) => {
     const aliveObjects = finalObjects.filter(o => o.alive);
     const winningTypes = new Set(aliveObjects.map(o => o.type));
 
-    // Update stats with kills
+    // Update stats with kills - THIS IS THE FIX for elimination counter
     const updatedStats = { ...state.playerStats };
     for (const obj of finalObjects) {
-      if (obj.kills > 0) {
-        updatedStats[obj.playerId].kills += obj.kills;
-      }
+      // Make sure we're tracking total kills across all rounds
+      updatedStats[obj.playerId].kills = Math.max(
+        updatedStats[obj.playerId].kills,
+        obj.kills + (updatedStats[obj.playerId].kills || 0)
+      );
     }
 
     // Determine advancing players
     let advancingPlayers: number[];
     if (aliveObjects.length === 0) {
-      // Everyone died, all advance
       advancingPlayers = state.activePlayers;
     } else if (winningTypes.size === 1) {
-      // One type won - all players who chose that type advance
       const winningType = Array.from(winningTypes)[0];
       advancingPlayers = state.activePlayers.filter(pid => {
         const placement = state.placements[pid];
         return placement && placement.type === winningType;
       });
     } else {
-      // Multiple types survived
       advancingPlayers = Array.from(new Set(aliveObjects.map(o => o.playerId)));
     }
 
@@ -187,7 +273,6 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, onGameEnd }) => {
 
     // Check if we have a winner
     if (advancingPlayers.length === 1) {
-      // Game over!
       const eliminated = state.activePlayers.filter(id => !advancingPlayers.includes(id));
       setState(prev => ({
         ...prev,
@@ -203,7 +288,6 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, onGameEnd }) => {
         playerStats: updatedStats,
       }));
     } else {
-      // Next round
       const eliminated = state.activePlayers.filter(id => !advancingPlayers.includes(id));
       setState(prev => ({
         ...prev,
@@ -235,17 +319,47 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, onGameEnd }) => {
       if (battleEndedRef.current) return;
 
       setState(prev => {
+        const now = Date.now();
         const newObjects = [...prev.objects];
         const aliveObjects = newObjects.filter(o => o.alive);
 
         // Check if battle is over
         const types = new Set(aliveObjects.map(o => o.type));
-        const battleTimedOut = Date.now() - prev.battleTime > BATTLE_DURATION;
+        const battleTimedOut = now - prev.battleTime > BATTLE_DURATION;
 
         if (types.size <= 1 || battleTimedOut) {
-          // Battle ended - call endRound and stop animation
           setTimeout(() => endRound(newObjects), 500);
           return prev;
+        }
+
+        // Update food particles
+        const newFood = [...prev.foodParticles];
+        for (const food of newFood) {
+          if (modifiers.movingFood) {
+            food.x += food.vx;
+            food.y += food.vy;
+
+            // Bounce off walls
+            if (food.x < food.size || food.x > GRID_SIZE - food.size) food.vx *= -1;
+            if (food.y < food.size || food.y > GRID_SIZE - food.size) food.vy *= -1;
+
+            food.x = Math.max(food.size, Math.min(GRID_SIZE - food.size, food.x));
+            food.y = Math.max(food.size, Math.min(GRID_SIZE - food.size, food.y));
+          }
+        }
+
+        // Update bullets
+        const newBullets = [...prev.bullets];
+        for (const bullet of newBullets) {
+          bullet.x += bullet.vx;
+          bullet.y += bullet.vy;
+
+          // Bounce off walls
+          if (bullet.x < bullet.size || bullet.x > GRID_SIZE - bullet.size) bullet.vx *= -1;
+          if (bullet.y < bullet.size || bullet.y > GRID_SIZE - bullet.size) bullet.vy *= -1;
+
+          bullet.x = Math.max(bullet.size, Math.min(GRID_SIZE - bullet.size, bullet.x));
+          bullet.y = Math.max(bullet.size, Math.min(GRID_SIZE - bullet.size, bullet.y));
         }
 
         // Move each object toward nearest target
@@ -257,36 +371,94 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, onGameEnd }) => {
             const dist = Math.sqrt(dx * dx + dy * dy);
 
             if (dist > 0) {
-              obj.x += (dx / dist) * MOVEMENT_SPEED;
-              obj.y += (dy / dist) * MOVEMENT_SPEED;
+              let speed = BASE_SPEED;
+
+              // Apply speed boost if active
+              if (modifiers.speedBoost && obj.speedBoost > now) {
+                speed *= SPEED_BOOST_MULTIPLIER;
+              } else if (obj.speedBoost > 0 && obj.speedBoost <= now) {
+                obj.speedBoost = 0; // Clear expired boost
+              }
+
+              obj.x += (dx / dist) * speed;
+              obj.y += (dy / dist) * speed;
             }
           }
 
           // Keep in bounds
-          obj.x = Math.max(OBJECT_SIZE / 2, Math.min(GRID_SIZE - OBJECT_SIZE / 2, obj.x));
-          obj.y = Math.max(OBJECT_SIZE / 2, Math.min(GRID_SIZE - OBJECT_SIZE / 2, obj.y));
+          obj.x = Math.max(obj.size / 2, Math.min(GRID_SIZE - obj.size / 2, obj.x));
+          obj.y = Math.max(obj.size / 2, Math.min(GRID_SIZE - obj.size / 2, obj.y));
+
+          // Check food collisions
+          if (modifiers.growthFood || modifiers.movingFood) {
+            for (let i = newFood.length - 1; i >= 0; i--) {
+              const food = newFood[i];
+              if (checkCollision(obj, food)) {
+                obj.size = Math.min(obj.size + food.growth, OBJECT_SIZE * 2);
+                obj.baseSize = obj.size;
+                newFood.splice(i, 1);
+                playSound('collect');
+              }
+            }
+          }
+
+          // Check bullet collisions
+          if (modifiers.bullets) {
+            for (const bullet of newBullets) {
+              if (checkCollision(obj, bullet)) {
+                obj.alive = false;
+                playSound('bullet');
+
+                // Try to respawn
+                if (!respawnObject(obj)) {
+                  // Object is truly dead
+                }
+                break;
+              }
+            }
+          }
         }
 
-        // Check collisions
+        // Check object collisions
         for (let i = 0; i < aliveObjects.length; i++) {
           for (let j = i + 1; j < aliveObjects.length; j++) {
             const obj1 = aliveObjects[i];
             const obj2 = aliveObjects[j];
+
+            if (!obj1.alive || !obj2.alive) continue;
 
             if (checkCollision(obj1, obj2)) {
               const winner = getWinner(obj1.type, obj2.type);
               if (winner === obj1.type) {
                 obj2.alive = false;
                 obj1.kills++;
+                playSound('eliminate');
+
+                if (modifiers.speedBoost) {
+                  obj1.speedBoost = now + SPEED_BOOST_DURATION;
+                  playSound('boost');
+                }
+
+                // Try to respawn the loser
+                respawnObject(obj2);
               } else if (winner === obj2.type) {
                 obj1.alive = false;
                 obj2.kills++;
+                playSound('eliminate');
+
+                if (modifiers.speedBoost) {
+                  obj2.speedBoost = now + SPEED_BOOST_DURATION;
+                  playSound('boost');
+                }
+
+                // Try to respawn the loser
+                respawnObject(obj1);
               }
             }
           }
         }
 
-        return { ...prev, objects: newObjects };
+        return { ...prev, objects: newObjects, foodParticles: newFood, bullets: newBullets };
       });
 
       animationRef.current = requestAnimationFrame(updateBattle);
@@ -300,7 +472,7 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, onGameEnd }) => {
         animationRef.current = undefined;
       }
     };
-  }, [state.phase, state.battleTime]);
+  }, [state.phase, state.battleTime, modifiers]);
 
   const handleNextRound = () => {
     setSelectedPosition(null);
@@ -314,25 +486,23 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, onGameEnd }) => {
       placements: {},
       currentPlacer: 0,
       battleTime: 0,
+      foodParticles: [],
+      bullets: [],
     }));
   };
 
   const handleGameEnd = () => {
-    // Calculate final scores based on placement
     const updatedPlayers = players.map(p => {
       const eliminated = state.eliminatedPlayers.find(e => e.playerId === p.id);
       const stats = state.playerStats[p.id];
 
       let score = 0;
       if (state.activePlayers.includes(p.id)) {
-        // Winner
         score = 1000;
       } else if (eliminated) {
-        // Placement-based score
         score = Math.max(0, 900 - (eliminated.placement - 1) * 100);
       }
 
-      // Add kill bonus
       score += stats.kills * 50;
 
       return { ...p, score: p.score + score };
@@ -349,17 +519,50 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, onGameEnd }) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Clear canvas
     ctx.clearRect(0, 0, GRID_SIZE, GRID_SIZE);
 
-    // Draw grid background
-    ctx.fillStyle = '#1e293b';
+    // Draw fun background with points of interest
+    // Sky gradient
+    const gradient = ctx.createLinearGradient(0, 0, 0, GRID_SIZE);
+    gradient.addColorStop(0, '#87CEEB');
+    gradient.addColorStop(1, '#98D8C8');
+    ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, GRID_SIZE, GRID_SIZE);
 
-    // Draw grid lines
-    ctx.strokeStyle = '#334155';
+    // Add some clouds
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.beginPath();
+    ctx.arc(200, 150, 60, 0, Math.PI * 2);
+    ctx.arc(250, 140, 70, 0, Math.PI * 2);
+    ctx.arc(300, 150, 60, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(800, 100, 50, 0, Math.PI * 2);
+    ctx.arc(850, 95, 60, 0, Math.PI * 2);
+    ctx.arc(900, 100, 50, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(600, 900, 70, 0, Math.PI * 2);
+    ctx.arc(660, 890, 80, 0, Math.PI * 2);
+    ctx.arc(720, 900, 70, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Add some grass/ground patterns
+    ctx.fillStyle = 'rgba(34, 139, 34, 0.1)';
+    for (let i = 0; i < 10; i++) {
+      const x = Math.random() * GRID_SIZE;
+      const y = Math.random() * GRID_SIZE;
+      ctx.beginPath();
+      ctx.arc(x, y, 20 + Math.random() * 30, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
     ctx.lineWidth = 1;
-    for (let i = 0; i <= GRID_SIZE; i += 50) {
+    for (let i = 0; i <= GRID_SIZE; i += 100) {
       ctx.beginPath();
       ctx.moveTo(i, 0);
       ctx.lineTo(i, GRID_SIZE);
@@ -370,50 +573,148 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, onGameEnd }) => {
       ctx.stroke();
     }
 
+    // Draw food particles
+    for (const food of state.foodParticles) {
+      ctx.fillStyle = '#FFD700';
+      ctx.beginPath();
+      ctx.arc(food.x, food.y, food.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#FFA500';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.font = `${food.size * 1.5}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🍎', food.x, food.y);
+    }
+
+    // Draw bullets
+    for (const bullet of state.bullets) {
+      ctx.fillStyle = '#FF0000';
+      ctx.beginPath();
+      ctx.arc(bullet.x, bullet.y, bullet.size, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.font = `${bullet.size * 1.5}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('💥', bullet.x, bullet.y);
+    }
+
+    // Draw placed objects during placement
+    if (state.phase === 'placement') {
+      Object.entries(state.placements).forEach(([playerIdStr, placement]) => {
+        const playerId = parseInt(playerIdStr);
+        const player = players.find(p => p.id === playerId);
+
+        // Draw object circle
+        ctx.fillStyle = 'rgba(99, 102, 241, 0.3)';
+        ctx.beginPath();
+        ctx.arc(placement.x, placement.y, OBJECT_SIZE / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw emoji
+        const emoji = placement.type === 'rock' ? '⚫' : placement.type === 'paper' ? '📄' : '✂️';
+        ctx.font = '30px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(emoji, placement.x, placement.y);
+
+        // Draw player name
+        if (player) {
+          ctx.font = 'bold 12px Arial';
+          ctx.fillStyle = '#fff';
+          ctx.strokeStyle = '#000';
+          ctx.lineWidth = 3;
+          ctx.strokeText(player.name, placement.x, placement.y - OBJECT_SIZE);
+          ctx.fillText(player.name, placement.x, placement.y - OBJECT_SIZE);
+        }
+      });
+    }
+
+    // Draw placement preview
     if (state.phase === 'placement' && selectedPosition) {
-      // Draw placement preview
       ctx.fillStyle = 'rgba(99, 102, 241, 0.5)';
       ctx.beginPath();
       ctx.arc(selectedPosition.x, selectedPosition.y, OBJECT_SIZE / 2, 0, Math.PI * 2);
       ctx.fill();
 
-      // Draw emoji
+      const emoji = selectedType === 'rock' ? '⚫' : selectedType === 'paper' ? '📄' : '✂️';
       ctx.font = '30px Arial';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      const emoji = selectedType === 'rock' ? '🪨' : selectedType === 'paper' ? '📄' : '✂️';
       ctx.fillText(emoji, selectedPosition.x, selectedPosition.y);
+
+      // Preview nametag
+      const currentPlayer = players.find(p => p.id === state.activePlayers[state.currentPlacer || 0]);
+      if (currentPlayer) {
+        ctx.font = 'bold 12px Arial';
+        ctx.fillStyle = '#fff';
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 3;
+        ctx.strokeText(currentPlayer.name, selectedPosition.x, selectedPosition.y - OBJECT_SIZE);
+        ctx.fillText(currentPlayer.name, selectedPosition.x, selectedPosition.y - OBJECT_SIZE);
+      }
     }
 
+    // Draw battle objects
     if (state.phase === 'battle' || state.phase === 'round-end') {
-      // Draw all objects
       for (const obj of state.objects) {
         if (!obj.alive) continue;
 
-        const emoji = obj.type === 'rock' ? '🪨' : obj.type === 'paper' ? '📄' : '✂️';
+        const emoji = obj.type === 'rock' ? '⚫' : obj.type === 'paper' ? '📄' : '✂️';
+
+        // Draw glow if speed boosted
+        if (modifiers.speedBoost && obj.speedBoost > Date.now()) {
+          ctx.fillStyle = 'rgba(255, 215, 0, 0.4)';
+          ctx.beginPath();
+          ctx.arc(obj.x, obj.y, obj.size / 2 + 10, 0, Math.PI * 2);
+          ctx.fill();
+        }
 
         // Draw object circle
-        ctx.fillStyle = obj.type === 'rock' ? '#94a3b8' : obj.type === 'paper' ? '#f8fafc' : '#64748b';
+        const colorMap = {
+          rock: '#94a3b8',
+          paper: '#f8fafc',
+          scissors: '#64748b',
+        };
+        ctx.fillStyle = colorMap[obj.type];
         ctx.beginPath();
         ctx.arc(obj.x, obj.y, obj.size / 2, 0, Math.PI * 2);
         ctx.fill();
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.stroke();
 
-        // Draw emoji
-        ctx.font = '30px Arial';
+        // Draw emoji scaled to size
+        const fontSize = Math.floor(obj.size * 0.75);
+        ctx.font = `${fontSize}px Arial`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(emoji, obj.x, obj.y);
 
-        // Draw player name
+        // Draw player nametag
         const player = players.find(p => p.id === obj.playerId);
         if (player) {
-          ctx.font = '10px Arial';
+          ctx.font = 'bold 12px Arial';
           ctx.fillStyle = '#fff';
-          ctx.fillText(player.name, obj.x, obj.y + obj.size / 2 + 10);
+          ctx.strokeStyle = '#000';
+          ctx.lineWidth = 3;
+          ctx.strokeText(player.name, obj.x, obj.y - obj.size / 2 - 10);
+          ctx.fillText(player.name, obj.x, obj.y - obj.size / 2 - 10);
+
+          // Show respawns left if modifier enabled
+          if (modifiers.respawns && obj.respawnsLeft > 0) {
+            ctx.font = 'bold 10px Arial';
+            ctx.fillStyle = '#00FF00';
+            ctx.strokeText(`♥ ${obj.respawnsLeft}`, obj.x, obj.y + obj.size / 2 + 10);
+            ctx.fillText(`♥ ${obj.respawnsLeft}`, obj.x, obj.y + obj.size / 2 + 10);
+          }
         }
       }
     }
-  }, [state, selectedPosition, selectedType, players]);
+  }, [state, selectedPosition, selectedType, players, modifiers]);
 
   // UI Rendering
   if (state.phase === 'placement' && state.currentPlacer !== null) {
@@ -433,7 +734,7 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, onGameEnd }) => {
               variant={selectedType === 'rock' ? 'primary' : 'secondary'}
               onClick={() => setSelectedType('rock')}
             >
-              🪨 Rock
+              ⚫ Rock
             </Button>
             <Button
               variant={selectedType === 'paper' ? 'primary' : 'secondary'}
@@ -492,6 +793,12 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, onGameEnd }) => {
           <div className="rps__battle-info">
             <p>Objects remaining: {aliveCount}</p>
             <p>Time left: {Math.ceil(timeLeft / 1000)}s</p>
+            {modifiers.respawns && <p className="game__modifier-active">🔄 Respawns Active</p>}
+            {modifiers.speedBoost && <p className="game__modifier-active">⚡ Speed Boost On Kill</p>}
+            {(modifiers.growthFood || modifiers.movingFood) && (
+              <p className="game__modifier-active">🍎 Food Active ({state.foodParticles.length} remaining)</p>
+            )}
+            {modifiers.bullets && <p className="game__modifier-active">💥 Danger Bullets Active</p>}
           </div>
         </Card>
       </div>
@@ -517,7 +824,7 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, onGameEnd }) => {
               <p>Winning type(s):</p>
               {Array.from(survivingTypes).map(type => (
                 <span key={type} className="rps__type-badge">
-                  {type === 'rock' ? '🪨 Rock' : type === 'paper' ? '📄 Paper' : '✂️ Scissors'}
+                  {type === 'rock' ? '⚫ Rock' : type === 'paper' ? '📄 Paper' : '✂️ Scissors'}
                 </span>
               ))}
             </div>
@@ -525,11 +832,17 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, onGameEnd }) => {
 
           <h4>Advancing Players:</h4>
           <div className="rps__advancing-list">
-            {advancingPlayerObjs.map(player => (
-              <div key={player.id} className="rps__player-item">
-                {player.name}
-              </div>
-            ))}
+            {advancingPlayerObjs.map(player => {
+              const stats = state.playerStats[player.id];
+              return (
+                <div key={player.id} className="rps__player-item">
+                  {player.name} - {stats.kills} eliminations
+                  {modifiers.respawns && stats.respawnsUsed > 0 && (
+                    <span className="rps__respawns-used"> ({stats.respawnsUsed} respawns used)</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           <Button onClick={handleNextRound} size="large">
@@ -546,11 +859,9 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, onGameEnd }) => {
       const aElim = state.eliminatedPlayers.find(e => e.playerId === a.id);
       const bElim = state.eliminatedPlayers.find(e => e.playerId === b.id);
 
-      // Winner first
       if (state.activePlayers.includes(a.id)) return -1;
       if (state.activePlayers.includes(b.id)) return 1;
 
-      // Then by placement (lower placement number = better)
       if (aElim && bElim) {
         return aElim.placement - bElim.placement;
       }
@@ -575,7 +886,12 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, onGameEnd }) => {
                 <div key={player.id} className={`rps__leaderboard-item ${isWinner ? 'rps__leaderboard-item--winner' : ''}`}>
                   <span className="rps__placement">#{index + 1}</span>
                   <span className="rps__player-name">{player.name}</span>
-                  <span className="rps__stats">{stats.kills} eliminations</span>
+                  <span className="rps__stats">
+                    {stats.kills} elimination{stats.kills !== 1 ? 's' : ''}
+                    {modifiers.respawns && stats.respawnsUsed > 0 && (
+                      <span className="rps__stat-detail"> • {stats.respawnsUsed} respawn{stats.respawnsUsed !== 1 ? 's' : ''}</span>
+                    )}
+                  </span>
                 </div>
               );
             })}

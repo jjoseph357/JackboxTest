@@ -19,7 +19,7 @@ export interface GameInfo {
 }
 
 // App state
-export type AppScreen = 'menu' | 'player-setup' | 'game-select' | 'round-select' | 'game';
+export type AppScreen = 'menu' | 'player-setup' | 'game-select' | 'round-select' | 'modifiers-select' | 'game';
 
 export interface AppState {
   screen: AppScreen;
@@ -91,15 +91,48 @@ export interface MissionMayhemState {
 // Rock Paper Scissors BR types
 export type RPSChoice = 'rock' | 'paper' | 'scissors';
 
+export interface RPSModifiers {
+  growthFood: boolean;
+  movingFood: boolean;
+  bullets: boolean;
+  speedBoost: boolean;
+  respawns: boolean;
+  respawnCount: number;
+}
+
 export interface RPSObject {
   id: string;
   playerId: number;
   type: RPSChoice;
   x: number;
   y: number;
+  vx: number;
+  vy: number;
   size: number;
+  baseSize: number;
   alive: boolean;
   kills: number;
+  speedBoost: number;
+  respawnsLeft: number;
+}
+
+export interface FoodParticle {
+  id: string;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  size: number;
+  growth: number;
+}
+
+export interface Bullet {
+  id: string;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  size: number;
 }
 
 export interface RPSBRState {
@@ -111,5 +144,8 @@ export interface RPSBRState {
   placements: { [playerId: number]: { type: RPSChoice; x: number; y: number } };
   currentPlacer: number | null;
   battleTime: number;
-  playerStats: { [playerId: number]: { kills: number; roundsWon: number } };
+  playerStats: { [playerId: number]: { kills: number; roundsWon: number; respawnsUsed: number } };
+  foodParticles: FoodParticle[];
+  bullets: Bullet[];
+  modifiers: RPSModifiers;
 }
