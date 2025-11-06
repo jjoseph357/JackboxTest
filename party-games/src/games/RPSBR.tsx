@@ -152,27 +152,30 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
     const playerId = state.activePlayers[state.currentPlacer];
     const isLastPlayer = state.currentPlacer === state.activePlayers.length - 1;
 
+    // Create the updated placements including current player
+    const updatedPlacements = {
+      ...state.placements,
+      [playerId]: { type: selectedType, x: selectedPosition.x, y: selectedPosition.y },
+    };
+
     setState(prev => ({
       ...prev,
-      placements: {
-        ...prev.placements,
-        [playerId]: { type: selectedType, x: selectedPosition.x, y: selectedPosition.y },
-      },
+      placements: updatedPlacements,
       currentPlacer: isLastPlayer ? null : prev.currentPlacer! + 1,
     }));
 
     setSelectedPosition(null);
 
-    // If all players have placed, start battle
+    // If all players have placed, start battle with the complete placements
     if (isLastPlayer) {
       setTimeout(() => {
-        startBattle();
+        startBattle(updatedPlacements);
       }, 100);
     }
   };
 
-  const startBattle = () => {
-    const objects: RPSObject[] = Object.entries(state.placements).map(([playerIdStr, placement]) => ({
+  const startBattle = (placements: typeof state.placements = state.placements) => {
+    const objects: RPSObject[] = Object.entries(placements).map(([playerIdStr, placement]) => ({
       id: generateId(),
       playerId: parseInt(playerIdStr),
       type: placement.type,
@@ -602,36 +605,8 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
       ctx.fillText('💥', bullet.x, bullet.y);
     }
 
-    // Draw placed objects during placement
-    if (state.phase === 'placement') {
-      Object.entries(state.placements).forEach(([playerIdStr, placement]) => {
-        const playerId = parseInt(playerIdStr);
-        const player = players.find(p => p.id === playerId);
-
-        // Draw object circle
-        ctx.fillStyle = 'rgba(99, 102, 241, 0.3)';
-        ctx.beginPath();
-        ctx.arc(placement.x, placement.y, OBJECT_SIZE / 2, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Draw emoji
-        const emoji = placement.type === 'rock' ? '⚫' : placement.type === 'paper' ? '📄' : '✂️';
-        ctx.font = '30px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(emoji, placement.x, placement.y);
-
-        // Draw player name
-        if (player) {
-          ctx.font = 'bold 12px Arial';
-          ctx.fillStyle = '#fff';
-          ctx.strokeStyle = '#000';
-          ctx.lineWidth = 3;
-          ctx.strokeText(player.name, placement.x, placement.y - OBJECT_SIZE);
-          ctx.fillText(player.name, placement.x, placement.y - OBJECT_SIZE);
-        }
-      });
-    }
+    // Previously placed objects are now hidden until battle starts
+    // This prevents players from seeing where others have placed their objects
 
     // Draw placement preview
     if (state.phase === 'placement' && selectedPosition) {
