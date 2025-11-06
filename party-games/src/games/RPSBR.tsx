@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { Player, RPSBRState, RPSObject, RPSChoice, RPSModifiers, FoodParticle, Bullet } from '../types';
+import type { Player, RPSBRState, RPSObject, RPSChoice, RPSModifiers, FoodParticle, Bullet, ClonePotion } from '../types';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { generateId } from '../utils/helpers';
@@ -28,9 +28,6 @@ const isMobile = () => {
 
 // Performance settings based on device
 const MOBILE_OPTIMIZATIONS = isMobile();
-const MAX_FOOD_PARTICLES = MOBILE_OPTIMIZATIONS ? 8 : 20;
-const MAX_FOOD_PARTICLES_MOVING = MOBILE_OPTIMIZATIONS ? 5 : 15;
-const MAX_BULLETS = MOBILE_OPTIMIZATIONS ? 2 : 3;
 const RENDER_CLOUDS = !MOBILE_OPTIMIZATIONS;
 const RENDER_GRID = !MOBILE_OPTIMIZATIONS;
 const TEXT_SHADOWS = !MOBILE_OPTIMIZATIONS;
@@ -58,6 +55,7 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
     playerStats: Object.fromEntries(players.map(p => [p.id, { kills: 0, roundsWon: 0, respawnsUsed: 0 }])),
     foodParticles: [],
     bullets: [],
+    clonePotions: [],
     modifiers,
   }));
 
@@ -111,13 +109,145 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
     return distance < (obj1.size + obj2.size) / 2;
   };
 
+  // Check if position is valid for current map shape
+  const isValidPosition = (x: number, y: number, objSize: number): boolean => {
+    const half = objSize / 2;
+    const center = GRID_SIZE / 2;
+
+    switch (modifiers.mapShape) {
+      case 'rectangle':
+        return x >= half && x <= GRID_SIZE - half && y >= half && y <= GRID_SIZE - half;
+
+      case 'circle':
+        const distFromCenter = Math.sqrt((x - center) ** 2 + (y - center) ** 2);
+        return distFromCenter + half <= center - 50;
+
+      case 'L':
+        // Block top-right corner
+        if (x > center && y < center) return false;
+        return x >= half && x <= GRID_SIZE - half && y >= half && y <= GRID_SIZE - half;
+
+      case 'plus':
+        // Cross shape - block all four corners
+        const margin = GRID_SIZE / 3;
+        if (x < margin && y < margin) return false; // top-left
+        if (x > GRID_SIZE - margin && y < margin) return false; // top-right
+        if (x < margin && y > GRID_SIZE - margin) return false; // bottom-left
+        if (x > GRID_SIZE - margin && y > GRID_SIZE - margin) return false; // bottom-right
+        return x >= half && x <= GRID_SIZE - half && y >= half && y <= GRID_SIZE - half;
+
+      case 'ring':
+        const ringDist = Math.sqrt((x - center) ** 2 + (y - center) ** 2);
+        const outerRadius = center - 50;
+        const innerRadius = center / 2;
+        return ringDist + half >= innerRadius && ringDist + half <= outerRadius;
+
+      case 'window':
+        // Frame with thick borders
+        const frameThickness = 150;
+        const isInFrame = x >= half && x <= GRID_SIZE - half && y >= half && y <= GRID_SIZE - half;
+        const isInHole = x > frameThickness && x < GRID_SIZE - frameThickness &&
+                        y > frameThickness && y < GRID_SIZE - frameThickness;
+        return isInFrame && !isInHole;
+
+      case 'barricades':
+        // Check if not inside barricades (blocks in center)
+        const barrierSize = 100;
+        const centerBarrier1 = Math.abs(x - center) < barrierSize / 2 && Math.abs(y - center) < barrierSize / 2;
+        const centerBarrier2 = Math.abs(x - center - 200) < barrierSize / 2 && Math.abs(y - center) < barrierSize / 2;
+        const centerBarrier3 = Math.abs(x - center + 200) < barrierSize / 2 && Math.abs(y - center) < barrierSize / 2;
+        return !centerBarrier1 && !centerBarrier2 && !centerBarrier3 &&
+               x >= half && x <= GRID_SIZE - half && y >= half && y <= GRID_SIZE - half;
+
+      case 'maze':
+        // Simple maze pattern
+        const wallThickness = 40;
+        const spacing = 200;
+        for (let i = 1; i < 5; i++) {
+          const wallX = i * spacing;
+          if (Math.abs(x - wallX) < wallThickness && (i % 2 === 0 ? y < GRID_SIZE / 2 : y > GRID_SIZE / 2)) {
+            return false;
+          }
+        }
+        return x >= half && x <= GRID_SIZE - half && y >= half && y <= GRID_SIZE - half;
+
+      default:
+        return x >= half && x <= GRID_SIZE - half && y >= half && y <= GRID_SIZE - half;
+    }
+  };
+
+  // Constrain position to valid map area
+  const constrainToMap = (x: number, y: number, objSize: number): { x: number; y: number } => {
+    const half = objSize / 2;
+
+    // Simple boundary constraint - more complex shapes will push objects to nearest valid position
+    let newX = Math.max(half, Math.min(GRID_SIZE - half, x));
+    let newY = Math.max(half, Math.min(GRID_SIZE - half, y));
+
+    // For non-rectangle shapes, try to find nearest valid position
+    if (modifiers.mapShape !== 'rectangle' && !isValidPosition(newX, newY, objSize)) {
+      // Simple push-back towards center
+      const center = GRID_SIZE / 2;
+      const dx = newX - center;
+      const dy = newY - center;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > 0) {
+        const pushBackAmount = 10;
+        newX -= (dx / dist) * pushBackAmount;
+        newY -= (dy / dist) * pushBackAmount;
+      }
+    }
+
+    return { x: newX, y: newY };
+  };
+
+  // Create a clone of an object
+  const createClone = (original: RPSObject): RPSObject => {
+    // Spawn clone near original
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 60;
+    let x = original.x + Math.cos(angle) * distance;
+    let y = original.y + Math.sin(angle) * distance;
+
+    // Constrain to map
+    const constrained = constrainToMap(x, y, original.size);
+    x = constrained.x;
+    y = constrained.y;
+
+    return {
+      id: generateId(),
+      playerId: original.playerId,
+      type: original.type,
+      x,
+      y,
+      vx: 0,
+      vy: 0,
+      size: original.baseSize, // Clones start at base size
+      baseSize: original.baseSize,
+      alive: true,
+      kills: 0,
+      speedBoost: 0,
+      respawnsLeft: modifiers.respawns ? modifiers.respawnCount : 0,
+      isClone: true,
+    };
+  };
+
   // Initialize food and bullets
   const initializeModifierObjects = () => {
     const food: FoodParticle[] = [];
     const bullets: Bullet[] = [];
+    const clonePotions: ClonePotion[] = [];
 
     if (modifiers.growthFood || modifiers.movingFood) {
-      const count = modifiers.movingFood ? MAX_FOOD_PARTICLES_MOVING : MAX_FOOD_PARTICLES;
+      // Use custom food count, but apply mobile optimization if needed
+      const desiredCount = modifiers.foodCount;
+      const count = MOBILE_OPTIMIZATIONS
+        ? Math.min(desiredCount, modifiers.movingFood ? 5 : 8)
+        : desiredCount;
+
+      // Calculate growth amount based on percentage
+      const growthAmount = modifiers.playerSize * (modifiers.growthPercentage / 100);
+
       for (let i = 0; i < count; i++) {
         food.push({
           id: generateId(),
@@ -125,26 +255,44 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
           y: Math.random() * (GRID_SIZE - 40) + 20,
           vx: modifiers.movingFood ? (Math.random() - 0.5) * 0.4 : 0,
           vy: modifiers.movingFood ? (Math.random() - 0.5) * 0.4 : 0,
-          size: FOOD_SIZE,
-          growth: 5,
+          size: modifiers.foodSize,
+          growth: growthAmount,
         });
       }
     }
 
     if (modifiers.bullets) {
-      for (let i = 0; i < MAX_BULLETS; i++) {
+      // Use custom bullet count, but apply mobile optimization if needed
+      const count = MOBILE_OPTIMIZATIONS
+        ? Math.min(modifiers.bulletCount, 2)
+        : modifiers.bulletCount;
+
+      for (let i = 0; i < count; i++) {
         bullets.push({
           id: generateId(),
           x: Math.random() * (GRID_SIZE - 40) + 20,
           y: Math.random() * (GRID_SIZE - 40) + 20,
-          vx: (Math.random() - 0.5) * BULLET_SPEED * 2,
-          vy: (Math.random() - 0.5) * BULLET_SPEED * 2,
-          size: BULLET_SIZE,
+          vx: (Math.random() - 0.5) * modifiers.bulletSpeed * 2,
+          vy: (Math.random() - 0.5) * modifiers.bulletSpeed * 2,
+          size: modifiers.bulletSize,
         });
       }
     }
 
-    setState(prev => ({ ...prev, foodParticles: food, bullets }));
+    // Initialize clone potions if enabled
+    if (modifiers.clonePotion) {
+      const potionCount = 3;
+      for (let i = 0; i < potionCount; i++) {
+        clonePotions.push({
+          id: generateId(),
+          x: Math.random() * (GRID_SIZE - 100) + 50,
+          y: Math.random() * (GRID_SIZE - 100) + 50,
+          size: 25,
+        });
+      }
+    }
+
+    setState(prev => ({ ...prev, foodParticles: food, bullets, clonePotions }));
   };
 
   // Canvas click handler for placement
@@ -192,12 +340,13 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
       y: placement.y,
       vx: 0,
       vy: 0,
-      size: OBJECT_SIZE,
-      baseSize: OBJECT_SIZE,
+      size: modifiers.playerSize,
+      baseSize: modifiers.playerSize,
       alive: true,
       kills: 0,
       speedBoost: 0,
       respawnsLeft: modifiers.respawns ? modifiers.respawnCount : 0,
+      isClone: false,
     }));
 
     battleEndedRef.current = false;
@@ -374,6 +523,9 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
           bullet.y = Math.max(bullet.size, Math.min(GRID_SIZE - bullet.size, bullet.y));
         }
 
+        // Clone potions array (avoid mutating prev state)
+        const newClonePotions = [...prev.clonePotions];
+
         // Move each object toward nearest target
         for (const obj of aliveObjects) {
           const target = findNearestTarget(obj, aliveObjects);
@@ -383,11 +535,11 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
             const dist = Math.sqrt(dx * dx + dy * dy);
 
             if (dist > 0) {
-              let speed = BASE_SPEED;
+              let speed = modifiers.playerSpeed;
 
               // Apply speed boost if active
               if (modifiers.speedBoost && obj.speedBoost > now) {
-                speed *= SPEED_BOOST_MULTIPLIER;
+                speed *= modifiers.speedBoostMultiplier;
               } else if (obj.speedBoost > 0 && obj.speedBoost <= now) {
                 obj.speedBoost = 0; // Clear expired boost
               }
@@ -397,19 +549,34 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
             }
           }
 
-          // Keep in bounds
-          obj.x = Math.max(obj.size / 2, Math.min(GRID_SIZE - obj.size / 2, obj.x));
-          obj.y = Math.max(obj.size / 2, Math.min(GRID_SIZE - obj.size / 2, obj.y));
+          // Keep in bounds and constrain to map shape
+          const constrained = constrainToMap(obj.x, obj.y, obj.size);
+          obj.x = constrained.x;
+          obj.y = constrained.y;
 
           // Check food collisions
           if (modifiers.growthFood || modifiers.movingFood) {
             for (let i = newFood.length - 1; i >= 0; i--) {
               const food = newFood[i];
               if (checkCollision(obj, food)) {
-                obj.size = Math.min(obj.size + food.growth, OBJECT_SIZE * 2);
+                obj.size = Math.min(obj.size + food.growth, modifiers.playerSize * 2);
                 obj.baseSize = obj.size;
                 newFood.splice(i, 1);
                 playSound('collect');
+              }
+            }
+          }
+
+          // Check clone potion collisions
+          if (modifiers.clonePotion) {
+            for (let i = newClonePotions.length - 1; i >= 0; i--) {
+              const potion = newClonePotions[i];
+              if (checkCollision(obj, potion)) {
+                // Create a clone
+                const clone = createClone(obj);
+                newObjects.push(clone);
+                newClonePotions.splice(i, 1);
+                playSound('boost');
               }
             }
           }
@@ -451,6 +618,12 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
                   playSound('boost');
                 }
 
+                // Create clone on kill if enabled
+                if (modifiers.cloneOnKill) {
+                  const clone = createClone(obj1);
+                  newObjects.push(clone);
+                }
+
                 // Try to respawn the loser
                 respawnObject(obj2);
               } else if (winner === obj2.type) {
@@ -463,6 +636,12 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
                   playSound('boost');
                 }
 
+                // Create clone on kill if enabled
+                if (modifiers.cloneOnKill) {
+                  const clone = createClone(obj2);
+                  newObjects.push(clone);
+                }
+
                 // Try to respawn the loser
                 respawnObject(obj1);
               }
@@ -470,7 +649,7 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
           }
         }
 
-        return { ...prev, objects: newObjects, foodParticles: newFood, bullets: newBullets };
+        return { ...prev, objects: newObjects, foodParticles: newFood, bullets: newBullets, clonePotions: newClonePotions };
       });
 
       animationRef.current = requestAnimationFrame(updateBattle);
@@ -500,6 +679,7 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
       battleTime: 0,
       foodParticles: [],
       bullets: [],
+      clonePotions: [],
     }));
   };
 
@@ -608,6 +788,91 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
       ctx.fillText('💥', bullet.x, bullet.y);
     }
 
+    // Draw clone potions
+    for (const potion of state.clonePotions) {
+      ctx.fillStyle = '#9B59B6';
+      ctx.beginPath();
+      ctx.arc(potion.x, potion.y, potion.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#8E44AD';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      ctx.font = `${potion.size * 1.5}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🧪', potion.x, potion.y);
+    }
+
+    // Draw map shape boundaries/obstacles
+    ctx.fillStyle = 'rgba(50, 50, 50, 0.7)';
+    const center = GRID_SIZE / 2;
+    const margin = GRID_SIZE / 3;
+
+    switch (modifiers.mapShape) {
+      case 'circle':
+        // Draw outer boundary ring
+        ctx.strokeStyle = 'rgba(100, 100, 100, 0.8)';
+        ctx.lineWidth = 20;
+        ctx.beginPath();
+        ctx.arc(center, center, center - 50, 0, Math.PI * 2);
+        ctx.stroke();
+        break;
+
+      case 'L':
+        // Block top-right corner
+        ctx.fillRect(center, 0, GRID_SIZE / 2, GRID_SIZE / 2);
+        break;
+
+      case 'plus':
+        // Block all four corners
+        ctx.fillRect(0, 0, margin, margin);
+        ctx.fillRect(GRID_SIZE - margin, 0, margin, margin);
+        ctx.fillRect(0, GRID_SIZE - margin, margin, margin);
+        ctx.fillRect(GRID_SIZE - margin, GRID_SIZE - margin, margin, margin);
+        break;
+
+      case 'ring':
+        // Draw donut shape
+        ctx.strokeStyle = 'rgba(100, 100, 100, 0.8)';
+        ctx.lineWidth = 20;
+        ctx.beginPath();
+        ctx.arc(center, center, center - 50, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(center, center, center / 2, 0, Math.PI * 2);
+        ctx.stroke();
+        break;
+
+      case 'window':
+        // Frame with hollow center
+        const frameThickness = 150;
+        ctx.fillRect(frameThickness, frameThickness, GRID_SIZE - frameThickness * 2, GRID_SIZE - frameThickness * 2);
+        break;
+
+      case 'barricades':
+        // Obstacles in the middle
+        const barrierSize = 100;
+        ctx.fillRect(center - barrierSize / 2, center - barrierSize / 2, barrierSize, barrierSize);
+        ctx.fillRect(center + 200 - barrierSize / 2, center - barrierSize / 2, barrierSize, barrierSize);
+        ctx.fillRect(center - 200 - barrierSize / 2, center - barrierSize / 2, barrierSize, barrierSize);
+        break;
+
+      case 'maze':
+        // Maze walls
+        const wallThickness = 40;
+        const spacing = 200;
+        for (let i = 1; i < 5; i++) {
+          const wallX = i * spacing;
+          if (i % 2 === 0) {
+            ctx.fillRect(wallX - wallThickness / 2, 0, wallThickness, GRID_SIZE / 2);
+          } else {
+            ctx.fillRect(wallX - wallThickness / 2, GRID_SIZE / 2, wallThickness, GRID_SIZE / 2);
+          }
+        }
+        break;
+    }
+
     // Previously placed objects are now hidden until battle starts
     // This prevents players from seeing where others have placed their objects
 
@@ -615,7 +880,7 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
     if (state.phase === 'placement' && selectedPosition) {
       ctx.fillStyle = 'rgba(99, 102, 241, 0.5)';
       ctx.beginPath();
-      ctx.arc(selectedPosition.x, selectedPosition.y, OBJECT_SIZE / 2, 0, Math.PI * 2);
+      ctx.arc(selectedPosition.x, selectedPosition.y, modifiers.playerSize / 2, 0, Math.PI * 2);
       ctx.fill();
 
       const emoji = selectedType === 'rock' ? '⚫' : selectedType === 'paper' ? '📄' : '✂️';
@@ -632,9 +897,9 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
         if (TEXT_SHADOWS) {
           ctx.strokeStyle = '#000';
           ctx.lineWidth = 3;
-          ctx.strokeText(currentPlayer.name, selectedPosition.x, selectedPosition.y - OBJECT_SIZE);
+          ctx.strokeText(currentPlayer.name, selectedPosition.x, selectedPosition.y - modifiers.playerSize);
         }
-        ctx.fillText(currentPlayer.name, selectedPosition.x, selectedPosition.y - OBJECT_SIZE);
+        ctx.fillText(currentPlayer.name, selectedPosition.x, selectedPosition.y - modifiers.playerSize);
       }
     }
 

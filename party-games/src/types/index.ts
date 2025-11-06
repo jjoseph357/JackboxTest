@@ -90,14 +90,34 @@ export interface MissionMayhemState {
 
 // Rock Paper Scissors BR types
 export type RPSChoice = 'rock' | 'paper' | 'scissors';
+export type MapShape = 'rectangle' | 'L' | 'plus' | 'circle' | 'barricades' | 'maze' | 'window' | 'ring';
 
 export interface RPSModifiers {
+  // Original modifiers
   growthFood: boolean;
   movingFood: boolean;
   bullets: boolean;
   speedBoost: boolean;
   respawns: boolean;
   respawnCount: number;
+
+  // New clone modifiers
+  cloneOnKill: boolean;
+  clonePotion: boolean;
+
+  // Map shape
+  mapShape: MapShape;
+
+  // Customizable settings
+  foodCount: number;
+  growthPercentage: number;
+  bulletSpeed: number;
+  bulletCount: number;
+  bulletSize: number;
+  foodSize: number;
+  playerSize: number;
+  playerSpeed: number;
+  speedBoostMultiplier: number;
 }
 
 export interface RPSObject {
@@ -114,6 +134,7 @@ export interface RPSObject {
   kills: number;
   speedBoost: number;
   respawnsLeft: number;
+  isClone: boolean;
 }
 
 export interface FoodParticle {
@@ -135,6 +156,13 @@ export interface Bullet {
   size: number;
 }
 
+export interface ClonePotion {
+  id: string;
+  x: number;
+  y: number;
+  size: number;
+}
+
 export interface RPSBRState {
   phase: 'placement' | 'ready-to-battle' | 'battle' | 'round-end' | 'game-end';
   tournamentRound: number;
@@ -147,5 +175,6 @@ export interface RPSBRState {
   playerStats: { [playerId: number]: { kills: number; roundsWon: number; respawnsUsed: number } };
   foodParticles: FoodParticle[];
   bullets: Bullet[];
+  clonePotions: ClonePotion[];
   modifiers: RPSModifiers;
 }

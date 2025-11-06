@@ -26,12 +26,28 @@ function App() {
   const [selectedGame, setSelectedGame] = useState<GameType | null>(null);
   const [maxRounds, setMaxRounds] = useState<number>(3);
   const [rpsModifiers, setRpsModifiers] = useState<RPSModifiers>({
+    // Original modifiers
     growthFood: false,
     movingFood: false,
     bullets: false,
     speedBoost: false,
     respawns: false,
     respawnCount: 1,
+    // New clone modifiers
+    cloneOnKill: false,
+    clonePotion: false,
+    // Map shape
+    mapShape: 'rectangle',
+    // Customizable settings (defaults)
+    foodCount: 15,
+    growthPercentage: 15,
+    bulletSpeed: 0.3,
+    bulletCount: 3,
+    bulletSize: 20,
+    foodSize: 15,
+    playerSize: 35,
+    playerSpeed: 0.18,
+    speedBoostMultiplier: 2,
   });
 
   const handleStartGame = () => {
@@ -65,12 +81,28 @@ function App() {
 
   const handleSkipModifiers = () => {
     setRpsModifiers({
+      // Original modifiers
       growthFood: false,
       movingFood: false,
       bullets: false,
       speedBoost: false,
       respawns: false,
       respawnCount: 1,
+      // New clone modifiers
+      cloneOnKill: false,
+      clonePotion: false,
+      // Map shape
+      mapShape: 'rectangle',
+      // Customizable settings (defaults)
+      foodCount: 15,
+      growthPercentage: 15,
+      bulletSpeed: 0.3,
+      bulletCount: 3,
+      bulletSize: 20,
+      foodSize: 15,
+      playerSize: 35,
+      playerSpeed: 0.18,
+      speedBoostMultiplier: 2,
     });
     setScreen('game');
   };
