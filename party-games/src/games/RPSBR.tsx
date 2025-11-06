@@ -20,6 +20,21 @@ const FOOD_SIZE = 15;
 const BULLET_SIZE = 20;
 const BULLET_SPEED = 0.3;
 
+// Mobile detection
+const isMobile = () => {
+  return /iPad|iPhone|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    || (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
+};
+
+// Performance settings based on device
+const MOBILE_OPTIMIZATIONS = isMobile();
+const MAX_FOOD_PARTICLES = MOBILE_OPTIMIZATIONS ? 8 : 20;
+const MAX_FOOD_PARTICLES_MOVING = MOBILE_OPTIMIZATIONS ? 5 : 15;
+const MAX_BULLETS = MOBILE_OPTIMIZATIONS ? 2 : 3;
+const RENDER_CLOUDS = !MOBILE_OPTIMIZATIONS;
+const RENDER_GRID = !MOBILE_OPTIMIZATIONS;
+const TEXT_SHADOWS = !MOBILE_OPTIMIZATIONS;
+
 // Sound effects (basic implementation)
 const playSound = (type: 'eliminate' | 'collect' | 'boost' | 'respawn' | 'bullet') => {
   // In a real implementation, you would load and play actual audio files
@@ -102,7 +117,7 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
     const bullets: Bullet[] = [];
 
     if (modifiers.growthFood || modifiers.movingFood) {
-      const count = modifiers.movingFood ? 15 : 20;
+      const count = modifiers.movingFood ? MAX_FOOD_PARTICLES_MOVING : MAX_FOOD_PARTICLES;
       for (let i = 0; i < count; i++) {
         food.push({
           id: generateId(),
@@ -117,7 +132,7 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
     }
 
     if (modifiers.bullets) {
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < MAX_BULLETS; i++) {
         bullets.push({
           id: generateId(),
           x: Math.random() * (GRID_SIZE - 40) + 20,
@@ -526,38 +541,42 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, GRID_SIZE, GRID_SIZE);
 
-    // Add some clouds
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-    ctx.beginPath();
-    ctx.arc(200, 150, 60, 0, Math.PI * 2);
-    ctx.arc(250, 140, 70, 0, Math.PI * 2);
-    ctx.arc(300, 150, 60, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(800, 100, 50, 0, Math.PI * 2);
-    ctx.arc(850, 95, 60, 0, Math.PI * 2);
-    ctx.arc(900, 100, 50, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(600, 900, 70, 0, Math.PI * 2);
-    ctx.arc(660, 890, 80, 0, Math.PI * 2);
-    ctx.arc(720, 900, 70, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Grid lines
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= GRID_SIZE; i += 100) {
+    // Add some clouds (desktop only for performance)
+    if (RENDER_CLOUDS) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
       ctx.beginPath();
-      ctx.moveTo(i, 0);
-      ctx.lineTo(i, GRID_SIZE);
-      ctx.stroke();
+      ctx.arc(200, 150, 60, 0, Math.PI * 2);
+      ctx.arc(250, 140, 70, 0, Math.PI * 2);
+      ctx.arc(300, 150, 60, 0, Math.PI * 2);
+      ctx.fill();
+
       ctx.beginPath();
-      ctx.moveTo(0, i);
-      ctx.lineTo(GRID_SIZE, i);
-      ctx.stroke();
+      ctx.arc(800, 100, 50, 0, Math.PI * 2);
+      ctx.arc(850, 95, 60, 0, Math.PI * 2);
+      ctx.arc(900, 100, 50, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(600, 900, 70, 0, Math.PI * 2);
+      ctx.arc(660, 890, 80, 0, Math.PI * 2);
+      ctx.arc(720, 900, 70, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Grid lines (desktop only for performance)
+    if (RENDER_GRID) {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= GRID_SIZE; i += 100) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i, GRID_SIZE);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0, i);
+        ctx.lineTo(GRID_SIZE, i);
+        ctx.stroke();
+      }
     }
 
     // Draw food particles
@@ -610,9 +629,11 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
       if (currentPlayer) {
         ctx.font = 'bold 12px Arial';
         ctx.fillStyle = '#fff';
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 3;
-        ctx.strokeText(currentPlayer.name, selectedPosition.x, selectedPosition.y - OBJECT_SIZE);
+        if (TEXT_SHADOWS) {
+          ctx.strokeStyle = '#000';
+          ctx.lineWidth = 3;
+          ctx.strokeText(currentPlayer.name, selectedPosition.x, selectedPosition.y - OBJECT_SIZE);
+        }
         ctx.fillText(currentPlayer.name, selectedPosition.x, selectedPosition.y - OBJECT_SIZE);
       }
     }
@@ -658,16 +679,20 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
         if (player) {
           ctx.font = 'bold 12px Arial';
           ctx.fillStyle = '#fff';
-          ctx.strokeStyle = '#000';
-          ctx.lineWidth = 3;
-          ctx.strokeText(player.name, obj.x, obj.y - obj.size / 2 - 10);
+          if (TEXT_SHADOWS) {
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 3;
+            ctx.strokeText(player.name, obj.x, obj.y - obj.size / 2 - 10);
+          }
           ctx.fillText(player.name, obj.x, obj.y - obj.size / 2 - 10);
 
           // Show respawns left if modifier enabled
           if (modifiers.respawns && obj.respawnsLeft > 0) {
             ctx.font = 'bold 10px Arial';
             ctx.fillStyle = '#00FF00';
-            ctx.strokeText(`♥ ${obj.respawnsLeft}`, obj.x, obj.y + obj.size / 2 + 10);
+            if (TEXT_SHADOWS) {
+              ctx.strokeText(`♥ ${obj.respawnsLeft}`, obj.x, obj.y + obj.size / 2 + 10);
+            }
             ctx.fillText(`♥ ${obj.respawnsLeft}`, obj.x, obj.y + obj.size / 2 + 10);
           }
         }
