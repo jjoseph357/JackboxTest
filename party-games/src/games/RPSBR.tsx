@@ -58,6 +58,7 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
     playerStats: Object.fromEntries(players.map(p => [p.id, { kills: 0, roundsWon: 0, respawnsUsed: 0 }])),
     foodParticles: [],
     bullets: [],
+    clonePotions: [],
     modifiers,
   }));
 
@@ -192,12 +193,13 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
       y: placement.y,
       vx: 0,
       vy: 0,
-      size: OBJECT_SIZE,
-      baseSize: OBJECT_SIZE,
+      size: modifiers.playerSize,
+      baseSize: modifiers.playerSize,
       alive: true,
       kills: 0,
       speedBoost: 0,
       respawnsLeft: modifiers.respawns ? modifiers.respawnCount : 0,
+      isClone: false,
     }));
 
     battleEndedRef.current = false;
