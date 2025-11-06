@@ -7,10 +7,11 @@ import { missions } from '../utils/gameData';
 
 interface MissionMayhemProps {
   players: Player[];
+  maxRounds: number;
   onGameEnd: (updatedPlayers: Player[]) => void;
 }
 
-export const MissionMayhem: React.FC<MissionMayhemProps> = ({ players, onGameEnd }) => {
+export const MissionMayhem: React.FC<MissionMayhemProps> = ({ players, maxRounds, onGameEnd }) => {
   const [state, setState] = useState<MissionMayhemState>(() => {
     const saboteurs = randomItems(players, getSaboteurCount(players.length)).map(p => p.id);
     return {
@@ -22,7 +23,7 @@ export const MissionMayhem: React.FC<MissionMayhemProps> = ({ players, onGameEnd
       missionResults: [],
       actionSubmissions: {},
       round: 0,
-      maxRounds: 5,
+      maxRounds,
       teamSize: getMissionTeamSize(players.length, 0),
     };
   });

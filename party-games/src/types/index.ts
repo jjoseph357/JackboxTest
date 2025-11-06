@@ -6,7 +6,7 @@ export interface Player {
 }
 
 // Game types
-export type GameType = 'secret-artist' | 'story-remix' | 'fact-fiction' | 'mission-mayhem';
+export type GameType = 'secret-artist' | 'story-remix' | 'fact-fiction' | 'mission-mayhem' | 'rps-br';
 
 export interface GameInfo {
   id: GameType;
@@ -15,15 +15,17 @@ export interface GameInfo {
   minPlayers: number;
   maxPlayers: number;
   icon: string;
+  defaultRounds?: number;
 }
 
 // App state
-export type AppScreen = 'menu' | 'player-setup' | 'game-select' | 'game';
+export type AppScreen = 'menu' | 'player-setup' | 'game-select' | 'round-select' | 'game';
 
 export interface AppState {
   screen: AppScreen;
   players: Player[];
   selectedGame: GameType | null;
+  maxRounds: number;
   gameState: any;
 }
 
@@ -84,4 +86,30 @@ export interface MissionMayhemState {
   round: number;
   maxRounds: number;
   teamSize: number;
+}
+
+// Rock Paper Scissors BR types
+export type RPSChoice = 'rock' | 'paper' | 'scissors';
+
+export interface RPSObject {
+  id: string;
+  playerId: number;
+  type: RPSChoice;
+  x: number;
+  y: number;
+  size: number;
+  alive: boolean;
+  kills: number;
+}
+
+export interface RPSBRState {
+  phase: 'placement' | 'battle' | 'round-end' | 'game-end';
+  tournamentRound: number;
+  activePlayers: number[];
+  eliminatedPlayers: { playerId: number; placement: number }[];
+  objects: RPSObject[];
+  placements: { [playerId: number]: { type: RPSChoice; x: number; y: number } };
+  currentPlacer: number | null;
+  battleTime: number;
+  playerStats: { [playerId: number]: { kills: number; roundsWon: number } };
 }

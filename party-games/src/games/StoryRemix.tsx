@@ -7,10 +7,11 @@ import { storyPrompts, storyTwists } from '../utils/gameData';
 
 interface StoryRemixProps {
   players: Player[];
+  maxRounds: number;
   onGameEnd: (updatedPlayers: Player[]) => void;
 }
 
-export const StoryRemix: React.FC<StoryRemixProps> = ({ players, onGameEnd }) => {
+export const StoryRemix: React.FC<StoryRemixProps> = ({ players, maxRounds, onGameEnd }) => {
   const [state, setState] = useState<StoryRemixState>(() => ({
     phase: 'writing',
     story: [{
@@ -21,7 +22,7 @@ export const StoryRemix: React.FC<StoryRemixProps> = ({ players, onGameEnd }) =>
     currentWriter: 0,
     submissions: {},
     round: 1,
-    maxRounds: players.length,
+    maxRounds,
     favoriteVotes: {},
   }));
 

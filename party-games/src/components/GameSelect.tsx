@@ -42,6 +42,14 @@ const games: GameInfo[] = [
     maxPlayers: 16,
     icon: '🕵️',
   },
+  {
+    id: 'rps-br',
+    name: '✊📄✂️ RPS Battle Royale',
+    description: 'Place rock, paper, or scissors on the battlefield! Objects chase their prey in an epic battle royale until one player remains!',
+    minPlayers: 2,
+    maxPlayers: 16,
+    icon: '✊',
+  },
 ];
 
 export const GameSelect: React.FC<GameSelectProps> = ({

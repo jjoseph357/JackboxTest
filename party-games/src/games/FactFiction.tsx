@@ -7,17 +7,18 @@ import { factCategories } from '../utils/gameData';
 
 interface FactFictionProps {
   players: Player[];
+  maxRounds: number;
   onGameEnd: (updatedPlayers: Player[]) => void;
 }
 
-export const FactFiction: React.FC<FactFictionProps> = ({ players, onGameEnd }) => {
+export const FactFiction: React.FC<FactFictionProps> = ({ players, maxRounds, onGameEnd }) => {
   const [state, setState] = useState<FactFictionState>(() => ({
     phase: 'submission',
     currentSubject: 0,
     facts: {},
     guesses: {},
     round: 1,
-    maxRounds: Math.min(players.length, 5),
+    maxRounds,
   }));
 
   const [trueFact, setTrueFact] = useState('');

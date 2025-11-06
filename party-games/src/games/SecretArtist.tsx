@@ -7,10 +7,11 @@ import { drawingPrompts } from '../utils/gameData';
 
 interface SecretArtistProps {
   players: Player[];
+  maxRounds: number;
   onGameEnd: (updatedPlayers: Player[]) => void;
 }
 
-export const SecretArtist: React.FC<SecretArtistProps> = ({ players, onGameEnd }) => {
+export const SecretArtist: React.FC<SecretArtistProps> = ({ players, maxRounds, onGameEnd }) => {
   const [state, setState] = useState<SecretArtistState>(() => ({
     phase: 'setup',
     prompt: randomItem(drawingPrompts),
@@ -19,7 +20,7 @@ export const SecretArtist: React.FC<SecretArtistProps> = ({ players, onGameEnd }
     currentDrawer: null,
     votes: {},
     round: 1,
-    maxRounds: 3,
+    maxRounds,
   }));
 
   const [playerOrder, setPlayerOrder] = useState<number[]>([]);
