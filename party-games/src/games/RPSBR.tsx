@@ -11,8 +11,14 @@ interface RPSBRProps {
 }
 
 const GRID_SIZE = 1200;
-const BATTLE_DURATION = 45000; // 45 seconds
+const OBJECT_SIZE = 35;
+const BASE_SPEED = 0.18;
+const BATTLE_DURATION = 60000; // 60 seconds
 const SPEED_BOOST_DURATION = 3000; // 3 seconds
+const SPEED_BOOST_MULTIPLIER = 1.5;
+const FOOD_SIZE = 15;
+const BULLET_SIZE = 20;
+const BULLET_SPEED = 0.3;
 
 // Mobile detection
 const isMobile = () => {
