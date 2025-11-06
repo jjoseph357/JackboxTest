@@ -9,14 +9,15 @@ interface RPSBRProps {
   onGameEnd: (updatedPlayers: Player[]) => void;
 }
 
-const GRID_SIZE = 600;
+const GRID_SIZE = 800;
 const OBJECT_SIZE = 40;
-const MOVEMENT_SPEED = 2;
+const MOVEMENT_SPEED = 0.5;
 const BATTLE_DURATION = 30000; // 30 seconds
 
 export const RPSBR: React.FC<RPSBRProps> = ({ players, onGameEnd }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | undefined>(undefined);
+  const battleEndedRef = useRef(false);
 
   const [state, setState] = useState<RPSBRState>(() => ({
     phase: 'placement',
@@ -88,8 +89,8 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, onGameEnd }) => {
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const x = (e.clientX - rect.left) * (GRID_SIZE / rect.width);
+    const y = (e.clientY - rect.top) * (GRID_SIZE / rect.height);
 
     setSelectedPosition({ x, y });
   };
@@ -98,22 +99,24 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, onGameEnd }) => {
     if (!selectedPosition || state.currentPlacer === null) return;
 
     const playerId = state.activePlayers[state.currentPlacer];
+    const isLastPlayer = state.currentPlacer === state.activePlayers.length - 1;
+
     setState(prev => ({
       ...prev,
       placements: {
         ...prev.placements,
         [playerId]: { type: selectedType, x: selectedPosition.x, y: selectedPosition.y },
       },
-      currentPlacer: prev.currentPlacer! < prev.activePlayers.length - 1
-        ? prev.currentPlacer! + 1
-        : null,
+      currentPlacer: isLastPlayer ? null : prev.currentPlacer! + 1,
     }));
 
     setSelectedPosition(null);
 
     // If all players have placed, start battle
-    if (state.currentPlacer === state.activePlayers.length - 1) {
-      startBattle();
+    if (isLastPlayer) {
+      setTimeout(() => {
+        startBattle();
+      }, 100);
     }
   };
 
@@ -129,6 +132,8 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, onGameEnd }) => {
       kills: 0,
     }));
 
+    battleEndedRef.current = false;
+
     setState(prev => ({
       ...prev,
       phase: 'battle',
@@ -137,20 +142,109 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, onGameEnd }) => {
     }));
   };
 
+  const endRound = (finalObjects: RPSObject[]) => {
+    if (battleEndedRef.current) return;
+    battleEndedRef.current = true;
+
+    // Cancel animation
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+      animationRef.current = undefined;
+    }
+
+    const aliveObjects = finalObjects.filter(o => o.alive);
+    const winningTypes = new Set(aliveObjects.map(o => o.type));
+
+    // Update stats with kills
+    const updatedStats = { ...state.playerStats };
+    for (const obj of finalObjects) {
+      if (obj.kills > 0) {
+        updatedStats[obj.playerId].kills += obj.kills;
+      }
+    }
+
+    // Determine advancing players
+    let advancingPlayers: number[];
+    if (aliveObjects.length === 0) {
+      // Everyone died, all advance
+      advancingPlayers = state.activePlayers;
+    } else if (winningTypes.size === 1) {
+      // One type won - all players who chose that type advance
+      const winningType = Array.from(winningTypes)[0];
+      advancingPlayers = state.activePlayers.filter(pid => {
+        const placement = state.placements[pid];
+        return placement && placement.type === winningType;
+      });
+    } else {
+      // Multiple types survived
+      advancingPlayers = Array.from(new Set(aliveObjects.map(o => o.playerId)));
+    }
+
+    // Mark rounds won
+    for (const pid of advancingPlayers) {
+      updatedStats[pid].roundsWon++;
+    }
+
+    // Check if we have a winner
+    if (advancingPlayers.length === 1) {
+      // Game over!
+      const eliminated = state.activePlayers.filter(id => !advancingPlayers.includes(id));
+      setState(prev => ({
+        ...prev,
+        phase: 'game-end',
+        activePlayers: advancingPlayers,
+        eliminatedPlayers: [
+          ...prev.eliminatedPlayers,
+          ...eliminated.map((playerId, idx) => ({
+            playerId,
+            placement: prev.eliminatedPlayers.length + eliminated.length - idx
+          })),
+        ],
+        playerStats: updatedStats,
+      }));
+    } else {
+      // Next round
+      const eliminated = state.activePlayers.filter(id => !advancingPlayers.includes(id));
+      setState(prev => ({
+        ...prev,
+        phase: 'round-end',
+        activePlayers: advancingPlayers,
+        eliminatedPlayers: [
+          ...prev.eliminatedPlayers,
+          ...eliminated.map((playerId, idx) => ({
+            playerId,
+            placement: prev.eliminatedPlayers.length + eliminated.length - idx
+          })),
+        ],
+        playerStats: updatedStats,
+      }));
+    }
+  };
+
   // Battle phase update loop
   useEffect(() => {
-    if (state.phase !== 'battle') return;
+    if (state.phase !== 'battle') {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = undefined;
+      }
+      return;
+    }
 
     const updateBattle = () => {
+      if (battleEndedRef.current) return;
+
       setState(prev => {
         const newObjects = [...prev.objects];
         const aliveObjects = newObjects.filter(o => o.alive);
 
         // Check if battle is over
         const types = new Set(aliveObjects.map(o => o.type));
-        if (types.size <= 1 || Date.now() - prev.battleTime > BATTLE_DURATION) {
-          // Battle ended
-          setTimeout(() => endRound(newObjects), 1000);
+        const battleTimedOut = Date.now() - prev.battleTime > BATTLE_DURATION;
+
+        if (types.size <= 1 || battleTimedOut) {
+          // Battle ended - call endRound and stop animation
+          setTimeout(() => endRound(newObjects), 500);
           return prev;
         }
 
@@ -203,81 +297,15 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, onGameEnd }) => {
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
+        animationRef.current = undefined;
       }
     };
   }, [state.phase, state.battleTime]);
 
-  const endRound = (finalObjects: RPSObject[]) => {
-    const aliveObjects = finalObjects.filter(o => o.alive);
-    const winningTypes = new Set(aliveObjects.map(o => o.type));
-
-    // Update stats with kills
-    const updatedStats = { ...state.playerStats };
-    for (const obj of finalObjects) {
-      if (obj.kills > 0) {
-        updatedStats[obj.playerId].kills += obj.kills;
-      }
-    }
-
-    // Determine advancing players
-    let advancingPlayers: number[];
-    if (aliveObjects.length === 0) {
-      // Everyone died, all advance
-      advancingPlayers = state.activePlayers;
-    } else if (winningTypes.size === 1) {
-      // One type won
-      const winningType = Array.from(winningTypes)[0];
-      advancingPlayers = state.activePlayers.filter(pid => {
-        const placement = state.placements[pid];
-        return placement && placement.type === winningType;
-      });
-    } else {
-      // Multiple types survived
-      advancingPlayers = Array.from(new Set(aliveObjects.map(o => o.playerId)));
-    }
-
-    // Mark rounds won
-    for (const pid of advancingPlayers) {
-      updatedStats[pid].roundsWon++;
-    }
-
-    // Check if we have a winner
-    if (advancingPlayers.length === 1) {
-      // Game over!
-      const eliminated = state.activePlayers.filter(id => !advancingPlayers.includes(id));
-      setState(prev => ({
-        ...prev,
-        phase: 'game-end',
-        activePlayers: advancingPlayers,
-        eliminatedPlayers: [
-          ...prev.eliminatedPlayers,
-          ...eliminated.map((playerId, idx) => ({
-            playerId,
-            placement: prev.eliminatedPlayers.length + eliminated.length - idx
-          })),
-        ],
-        playerStats: updatedStats,
-      }));
-    } else {
-      // Next round
-      const eliminated = state.activePlayers.filter(id => !advancingPlayers.includes(id));
-      setState(prev => ({
-        ...prev,
-        phase: 'round-end',
-        activePlayers: advancingPlayers,
-        eliminatedPlayers: [
-          ...prev.eliminatedPlayers,
-          ...eliminated.map((playerId, idx) => ({
-            playerId,
-            placement: prev.eliminatedPlayers.length + eliminated.length - idx
-          })),
-        ],
-        playerStats: updatedStats,
-      }));
-    }
-  };
-
   const handleNextRound = () => {
+    setSelectedPosition(null);
+    setSelectedType('rock');
+
     setState(prev => ({
       ...prev,
       phase: 'placement',
@@ -398,6 +426,7 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, onGameEnd }) => {
         <Card className="game__placement-card">
           <h3>Current Player: {currentPlayer?.name}</h3>
           <p>Select your weapon and click on the battlefield to place it!</p>
+          <p className="game__hint">Other players: Look away! 👀</p>
 
           <div className="rps__type-select">
             <Button
