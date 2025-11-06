@@ -11,8 +11,8 @@ interface RPSBRProps {
 }
 
 const GRID_SIZE = 1200;
-const OBJECT_SIZE = 40;
-const BASE_SPEED = 0.2;
+const OBJECT_SIZE = 35;
+const BASE_SPEED = 0.18;
 const BATTLE_DURATION = 45000; // 45 seconds
 const SPEED_BOOST_DURATION = 3000; // 3 seconds
 const SPEED_BOOST_MULTIPLIER = 2;
@@ -552,16 +552,6 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
     ctx.arc(720, 900, 70, 0, Math.PI * 2);
     ctx.fill();
 
-    // Add some grass/ground patterns
-    ctx.fillStyle = 'rgba(34, 139, 34, 0.1)';
-    for (let i = 0; i < 10; i++) {
-      const x = Math.random() * GRID_SIZE;
-      const y = Math.random() * GRID_SIZE;
-      ctx.beginPath();
-      ctx.arc(x, y, 20 + Math.random() * 30, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
     // Grid lines
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
     ctx.lineWidth = 1;
@@ -749,7 +739,6 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
 
   if (state.phase === 'battle') {
     const aliveCount = state.objects.filter(o => o.alive).length;
-    const timeLeft = Math.max(0, BATTLE_DURATION - (Date.now() - state.battleTime));
 
     return (
       <div className="game">
@@ -767,7 +756,6 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
 
           <div className="rps__battle-info">
             <p>Objects remaining: {aliveCount}</p>
-            <p>Time left: {Math.ceil(timeLeft / 1000)}s</p>
             {modifiers.respawns && <p className="game__modifier-active">🔄 Respawns Active</p>}
             {modifiers.speedBoost && <p className="game__modifier-active">⚡ Speed Boost On Kill</p>}
             {(modifiers.growthFood || modifiers.movingFood) && (
