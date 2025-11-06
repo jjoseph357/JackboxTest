@@ -28,6 +28,7 @@ const isMobile = () => {
 
 // Performance settings based on device
 const MOBILE_OPTIMIZATIONS = isMobile();
+const MOBILE_SPEED_MULTIPLIER = MOBILE_OPTIMIZATIONS ? 4 : 1; // 4x speed for mobile devices
 const RENDER_CLOUDS = !MOBILE_OPTIMIZATIONS;
 const RENDER_GRID = !MOBILE_OPTIMIZATIONS;
 const TEXT_SHADOWS = !MOBILE_OPTIMIZATIONS;
@@ -227,7 +228,7 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
       alive: true,
       kills: 0,
       speedBoost: 0,
-      respawnsLeft: modifiers.respawns ? modifiers.respawnCount : 0,
+      respawnsLeft: 0, // Clones never get respawns to prevent infinite clones
       isClone: true,
     };
   };
@@ -253,8 +254,8 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
           id: generateId(),
           x: Math.random() * (GRID_SIZE - 40) + 20,
           y: Math.random() * (GRID_SIZE - 40) + 20,
-          vx: modifiers.movingFood ? (Math.random() - 0.5) * 0.4 : 0,
-          vy: modifiers.movingFood ? (Math.random() - 0.5) * 0.4 : 0,
+          vx: modifiers.movingFood ? (Math.random() - 0.5) * 0.4 * MOBILE_SPEED_MULTIPLIER : 0,
+          vy: modifiers.movingFood ? (Math.random() - 0.5) * 0.4 * MOBILE_SPEED_MULTIPLIER : 0,
           size: modifiers.foodSize,
           growth: growthAmount,
         });
@@ -272,8 +273,8 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
           id: generateId(),
           x: Math.random() * (GRID_SIZE - 40) + 20,
           y: Math.random() * (GRID_SIZE - 40) + 20,
-          vx: (Math.random() - 0.5) * modifiers.bulletSpeed * 2,
-          vy: (Math.random() - 0.5) * modifiers.bulletSpeed * 2,
+          vx: (Math.random() - 0.5) * modifiers.bulletSpeed * 2 * MOBILE_SPEED_MULTIPLIER,
+          vy: (Math.random() - 0.5) * modifiers.bulletSpeed * 2 * MOBILE_SPEED_MULTIPLIER,
           size: modifiers.bulletSize,
         });
       }
@@ -535,7 +536,7 @@ export const RPSBR: React.FC<RPSBRProps> = ({ players, modifiers, onGameEnd }) =
             const dist = Math.sqrt(dx * dx + dy * dy);
 
             if (dist > 0) {
-              let speed = modifiers.playerSpeed;
+              let speed = modifiers.playerSpeed * MOBILE_SPEED_MULTIPLIER;
 
               // Apply speed boost if active
               if (modifiers.speedBoost && obj.speedBoost > now) {
