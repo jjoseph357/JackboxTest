@@ -80,7 +80,9 @@ function App() {
   };
 
   const handleGameEnd = (updatedPlayers: Player[]) => {
-    setPlayers(updatedPlayers);
+    // Reset scores but keep player names
+    const playersWithResetScores = updatedPlayers.map(p => ({ ...p, score: 0 }));
+    setPlayers(playersWithResetScores);
     setScreen('menu');
     setSelectedGame(null);
   };
@@ -106,7 +108,11 @@ function App() {
         {screen === 'menu' && <MainMenu onStart={handleStartGame} />}
 
         {screen === 'player-setup' && (
-          <PlayerSetup onComplete={handlePlayersSelected} onBack={handleBackToMenu} />
+          <PlayerSetup
+            onComplete={handlePlayersSelected}
+            onBack={handleBackToMenu}
+            initialPlayers={players}
+          />
         )}
 
         {screen === 'game-select' && (

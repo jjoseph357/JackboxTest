@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from './Button';
 import { Input } from './Input';
 import { Card } from './Card';
@@ -7,12 +7,22 @@ import type { Player } from '../types';
 interface PlayerSetupProps {
   onComplete: (players: Player[]) => void;
   onBack: () => void;
+  initialPlayers?: Player[];
 }
 
-export const PlayerSetup: React.FC<PlayerSetupProps> = ({ onComplete, onBack }) => {
-  const [playerCount, setPlayerCount] = useState<number>(4);
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [showNames, setShowNames] = useState(false);
+export const PlayerSetup: React.FC<PlayerSetupProps> = ({ onComplete, onBack, initialPlayers = [] }) => {
+  const [playerCount, setPlayerCount] = useState<number>(initialPlayers.length || 4);
+  const [players, setPlayers] = useState<Player[]>(initialPlayers);
+  const [showNames, setShowNames] = useState(initialPlayers.length > 0);
+
+  // Update state if initialPlayers changes
+  useEffect(() => {
+    if (initialPlayers.length > 0) {
+      setPlayerCount(initialPlayers.length);
+      setPlayers(initialPlayers);
+      setShowNames(true);
+    }
+  }, [initialPlayers]);
 
   const handlePlayerCountChange = (count: string) => {
     const num = parseInt(count) || 2;
