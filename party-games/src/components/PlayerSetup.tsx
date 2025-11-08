@@ -26,7 +26,7 @@ export const PlayerSetup: React.FC<PlayerSetupProps> = ({ onComplete, onBack, in
 
   const handlePlayerCountChange = (count: string) => {
     const num = parseInt(count) || 2;
-    const clamped = Math.max(2, Math.min(16, num));
+    const clamped = Math.max(2, Math.min(20, num));
     setPlayerCount(clamped);
   };
 
@@ -63,7 +63,7 @@ export const PlayerSetup: React.FC<PlayerSetupProps> = ({ onComplete, onBack, in
           <div className="player-setup__count">{playerCount}</div>
           <Button
             onClick={() => handlePlayerCountChange(String(playerCount + 1))}
-            disabled={playerCount >= 16}
+            disabled={playerCount >= 20}
             size="large"
           >
             +
