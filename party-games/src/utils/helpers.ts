@@ -63,6 +63,10 @@ export const getMissionTeamSize = (playerCount: number, round: number): number =
     14: [3, 4, 4, 5, 5],
     15: [3, 4, 4, 5, 5],
     16: [3, 4, 4, 5, 5],
+    17: [4, 5, 5, 6, 6],
+    18: [4, 5, 5, 6, 6],
+    19: [4, 5, 5, 6, 6],
+    20: [4, 5, 5, 6, 6],
   };
 
   const sizes = teamSizes[playerCount] || teamSizes[10];
@@ -73,5 +77,7 @@ export const getMissionTeamSize = (playerCount: number, round: number): number =
 export const getSaboteurCount = (playerCount: number): number => {
   if (playerCount <= 6) return 2;
   if (playerCount <= 9) return 3;
-  return 4;
+  if (playerCount <= 14) return 4;
+  if (playerCount <= 17) return 5;
+  return 6; // 18-20 players
 };

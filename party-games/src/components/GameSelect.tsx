@@ -15,7 +15,7 @@ const games: GameInfo[] = [
     name: '🎨 Secret Artist',
     description: 'One player is the secret artist who doesn\'t know what to draw! Can you find them?',
     minPlayers: 3,
-    maxPlayers: 16,
+    maxPlayers: 20,
     icon: '🎨',
   },
   {
@@ -23,7 +23,7 @@ const games: GameInfo[] = [
     name: '📖 Story Remix',
     description: 'Collaborate to create a wild story one sentence at a time with unexpected twists!',
     minPlayers: 3,
-    maxPlayers: 16,
+    maxPlayers: 20,
     icon: '📖',
   },
   {
@@ -31,7 +31,7 @@ const games: GameInfo[] = [
     name: '🤔 Fact or Fiction',
     description: 'Share facts about yourself - some true, some false. Can your friends tell the difference?',
     minPlayers: 3,
-    maxPlayers: 16,
+    maxPlayers: 20,
     icon: '🤔',
   },
   {
@@ -39,7 +39,7 @@ const games: GameInfo[] = [
     name: '🕵️ Mission Mayhem',
     description: 'Complete team missions, but beware! Hidden saboteurs are working against you.',
     minPlayers: 5,
-    maxPlayers: 16,
+    maxPlayers: 20,
     icon: '🕵️',
   },
   {
@@ -47,7 +47,7 @@ const games: GameInfo[] = [
     name: '✊📄✂️ RPS Battle Royale',
     description: 'Place rock, paper, or scissors on the battlefield! Objects chase their prey in an epic battle royale until one player remains!',
     minPlayers: 2,
-    maxPlayers: 16,
+    maxPlayers: 20,
     icon: '✊',
   },
 ];
