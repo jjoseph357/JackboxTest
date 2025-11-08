@@ -30,9 +30,14 @@ export interface AppState {
 }
 
 // Secret Artist types
+export interface DrawingPrompt {
+  normal: string;
+  secret: string;
+}
+
 export interface SecretArtistState {
   phase: 'setup' | 'drawing' | 'voting' | 'reveal' | 'end';
-  prompt: string;
+  prompt: DrawingPrompt;
   secretArtistId: number;
   drawings: { [playerId: number]: string };
   currentDrawer: number | null;

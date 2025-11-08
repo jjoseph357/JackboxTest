@@ -181,13 +181,17 @@ export const SecretArtist: React.FC<SecretArtistProps> = ({ players, maxRounds, 
 
           <div className="game__prompt" style={{ margin: '40px 0', padding: '30px', fontSize: '24px' }}>
             {isSecretArtist ? (
-              <p className="game__secret" style={{ color: '#ef4444', fontWeight: 'bold' }}>
-                🎭 You are the SECRET ARTIST!<br />
-                Draw something to blend in!
-              </p>
+              <>
+                <p className="game__secret" style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '24px', marginBottom: '20px' }}>
+                  🎭 You are the SECRET ARTIST!
+                </p>
+                <p className="game__normal" style={{ fontSize: '32px', fontWeight: 'bold' }}>
+                  Draw: {state.prompt.secret}
+                </p>
+              </>
             ) : (
               <p className="game__normal" style={{ fontSize: '32px', fontWeight: 'bold' }}>
-                Draw: {state.prompt}
+                Draw: {state.prompt.normal}
               </p>
             )}
           </div>
@@ -227,9 +231,9 @@ export const SecretArtist: React.FC<SecretArtistProps> = ({ players, maxRounds, 
             {minutes}:{seconds.toString().padStart(2, '0')}
           </div>
 
-          <p className="game__hint">The prompt is: <strong>{state.prompt}</strong></p>
+          <p className="game__hint">The prompt is: <strong>{state.prompt.normal}</strong></p>
           <p style={{ marginTop: '20px', color: '#6b7280' }}>
-            (The Secret Artist doesn't know this!)
+            (The Secret Artist has a different prompt!)
           </p>
 
           {drawingTimer > 0 && (
@@ -255,7 +259,7 @@ export const SecretArtist: React.FC<SecretArtistProps> = ({ players, maxRounds, 
         <Card className="game__voting-card">
           <h3>Current Voter: {currentVoter?.name}</h3>
           <p>Look at all the whiteboards. Who do you think is the Secret Artist?</p>
-          <p className="game__hint">The prompt was: <strong>{state.prompt}</strong></p>
+          <p className="game__hint">The prompt was: <strong>{state.prompt.normal}</strong></p>
 
           <div className="game__vote-buttons" style={{ marginTop: '30px', display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center' }}>
             {players.map(player => (
@@ -313,6 +317,16 @@ export const SecretArtist: React.FC<SecretArtistProps> = ({ players, maxRounds, 
             </p>
             <p style={{ fontSize: '18px', margin: '10px 0' }}>
               ❌ Wrong guesses: {wrongGuesses}
+            </p>
+          </div>
+
+          <div style={{ margin: '20px 0', padding: '20px', background: '#fef3c7', borderRadius: '8px' }}>
+            <h4>The Prompts:</h4>
+            <p style={{ fontSize: '16px', margin: '10px 0' }}>
+              <strong>Everyone drew:</strong> {state.prompt.normal}
+            </p>
+            <p style={{ fontSize: '16px', margin: '10px 0', color: '#dc2626' }}>
+              <strong>Secret Artist drew:</strong> {state.prompt.secret}
             </p>
           </div>
 
