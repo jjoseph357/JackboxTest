@@ -72,11 +72,10 @@ export const SecretArtist: React.FC<SecretArtistProps> = ({ players, maxRounds, 
   };
 
   const handleStartVoting = () => {
-    // Create voting order: all players except the secret artist, in random order
-    const eligibleVoters = players
-      .filter(p => p.id !== state.secretArtistId)
-      .map(p => p.id);
-    const randomOrder = shuffle(eligibleVoters);
+    // Create voting order: ALL players in random order (including secret artist)
+    // Secret artist's vote won't affect scoring, but they vote to avoid detection
+    const allPlayerIds = players.map(p => p.id);
+    const randomOrder = shuffle(allPlayerIds);
 
     setVotingOrder(randomOrder);
     setCurrentVoterIndex(0);
@@ -111,11 +110,18 @@ export const SecretArtist: React.FC<SecretArtistProps> = ({ players, maxRounds, 
     const updatedPlayers = players.map(p => {
       let points = 0;
 
-      // Check each vote
+      // Check each vote (skip secret artist's vote - it doesn't count)
       Object.entries(state.votes).forEach(([voterId, votedForId]) => {
+        const voterIdNum = parseInt(voterId);
+
+        // Skip if this vote is from the secret artist
+        if (voterIdNum === state.secretArtistId) {
+          return;
+        }
+
         if (votedForId === state.secretArtistId) {
           // Correct guess - voter gets 1 point
-          if (parseInt(voterId) === p.id) {
+          if (voterIdNum === p.id) {
             points += 1;
           }
         } else {
@@ -331,22 +337,35 @@ export const SecretArtist: React.FC<SecretArtistProps> = ({ players, maxRounds, 
   if (state.phase === 'reveal') {
     const secretArtist = players.find(p => p.id === state.secretArtistId);
 
-    // Calculate points for this round
+    // Calculate points for this round (excluding secret artist's vote)
     const roundPoints: { [key: number]: number } = {};
     players.forEach(p => { roundPoints[p.id] = 0; });
 
     Object.entries(state.votes).forEach(([voterId, votedForId]) => {
+      const voterIdNum = parseInt(voterId);
+
+      // Skip secret artist's vote - it doesn't count for scoring
+      if (voterIdNum === state.secretArtistId) {
+        return;
+      }
+
       if (votedForId === state.secretArtistId) {
         // Correct guess
-        roundPoints[parseInt(voterId)] = (roundPoints[parseInt(voterId)] || 0) + 1;
+        roundPoints[voterIdNum] = (roundPoints[voterIdNum] || 0) + 1;
       } else {
         // Wrong guess
         roundPoints[state.secretArtistId] = (roundPoints[state.secretArtistId] || 0) + 1;
       }
     });
 
-    const correctGuesses = Object.values(state.votes).filter(v => v === state.secretArtistId).length;
-    const wrongGuesses = Object.values(state.votes).length - correctGuesses;
+    // Count votes (excluding secret artist's vote)
+    const votesWithoutSecretArtist = Object.entries(state.votes).filter(
+      ([voterId]) => parseInt(voterId) !== state.secretArtistId
+    );
+    const correctGuesses = votesWithoutSecretArtist.filter(
+      ([, votedForId]) => votedForId === state.secretArtistId
+    ).length;
+    const wrongGuesses = votesWithoutSecretArtist.length - correctGuesses;
 
     return (
       <div className="game">
@@ -412,10 +431,17 @@ export const SecretArtist: React.FC<SecretArtistProps> = ({ players, maxRounds, 
               const voter = players.find(p => p.id === parseInt(voterId));
               const votedFor = players.find(p => p.id === votedForId);
               const isCorrect = votedForId === state.secretArtistId;
+              const isSecretArtistVote = parseInt(voterId) === state.secretArtistId;
 
               return (
-                <div key={voterId} style={{ padding: '8px', margin: '3px 0' }}>
+                <div key={voterId} style={{
+                  padding: '8px',
+                  margin: '3px 0',
+                  opacity: isSecretArtistVote ? 0.6 : 1,
+                  fontStyle: isSecretArtistVote ? 'italic' : 'normal'
+                }}>
                   {voter?.name} voted for {votedFor?.name} {isCorrect ? '✅' : '❌'}
+                  {isSecretArtistVote && ' (didn\'t count)'}
                 </div>
               );
             })}
