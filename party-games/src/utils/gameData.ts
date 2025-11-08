@@ -71,8 +71,6 @@ export const drawingPrompts = [
   { normal: 'A concert', secret: 'A performance' },
   { normal: 'A wedding', secret: 'A ceremony' },
   { normal: 'A graduation', secret: 'A ceremony' },
-  { normal: 'Halloween', secret: 'A costume party' },
-  { normal: 'Christmas morning', secret: 'Opening presents' },
   { normal: 'A snowman', secret: 'A snow sculpture' },
   { normal: 'Building a sandcastle', secret: 'Building a castle' },
   { normal: 'Flying a kite', secret: 'Something flying' },
@@ -422,11 +420,6 @@ export const drawingPrompts = [
   // Holidays & Celebrations
   { normal: 'Blowing out birthday candles', secret: 'Putting out small flames' },
   { normal: 'Opening gifts', secret: 'Unwrapping presents' },
-  { normal: 'Carving a pumpkin', secret: 'Cutting a vegetable' },
-  { normal: 'Trick-or-treating', secret: 'Collecting candy' },
-  { normal: 'Decorating a Christmas tree', secret: 'Adding ornaments to tree' },
-  { normal: 'Hanging stockings', secret: 'Hanging socks' },
-  { normal: 'Making a gingerbread house', secret: 'Building with cookies' },
   { normal: 'Wrapping presents', secret: 'Covering gifts' },
   { normal: 'New Year countdown', secret: 'Counting down' },
   { normal: 'Fireworks display', secret: 'Sky explosions' },
@@ -436,7 +429,6 @@ export const drawingPrompts = [
   { normal: 'Carving turkey', secret: 'Cutting meat' },
   { normal: 'Valentine card', secret: 'Love note' },
   { normal: 'Fourth of July', secret: 'Summer celebration' },
-  { normal: 'St. Patrick\'s Day', secret: 'Green holiday' },
 ];
 
 // Story prompts for Story Remix
