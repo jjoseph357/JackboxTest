@@ -1,26 +1,70 @@
-// Drawing prompts for Secret Artist
-export const drawingPrompts = [
-  'A dinosaur riding a bicycle',
-  'A cat wearing sunglasses',
-  'A house on a cloud',
-  'A superhero eating pizza',
-  'An astronaut walking a dog',
-  'A robot cooking dinner',
-  'A dragon reading a book',
-  'A pirate ship in space',
-  'A talking tree',
-  'A flying car',
-  'A castle made of candy',
-  'A mermaid at a concert',
-  'An alien playing guitar',
-  'A wizard at the beach',
-  'A snowman in the desert',
-  'A ninja at a tea party',
-  'A penguin on a skateboard',
-  'A unicorn in a library',
-  'A ghost playing soccer',
-  'A vampire at a barbecue',
+// Drawing prompts for Secret Artist - Simple real-life objects
+const objectNouns = [
+  // Animals
+  'Cat', 'Dog', 'Bird', 'Fish', 'Horse', 'Cow', 'Pig', 'Chicken', 'Duck', 'Rabbit',
+  'Turtle', 'Frog', 'Snake', 'Bear', 'Lion', 'Tiger', 'Elephant', 'Giraffe', 'Monkey', 'Penguin',
+  'Owl', 'Eagle', 'Butterfly', 'Bee', 'Spider', 'Shark', 'Whale', 'Dolphin', 'Octopus', 'Crab',
+
+  // Food & Drink
+  'Pizza', 'Burger', 'Hot Dog', 'Taco', 'Sandwich', 'Ice Cream', 'Cookie', 'Cake', 'Donut', 'Apple',
+  'Banana', 'Orange', 'Strawberry', 'Watermelon', 'Grapes', 'Carrot', 'Broccoli', 'Corn', 'Bread', 'Cheese',
+  'Coffee', 'Tea', 'Soda', 'Milk', 'Water Bottle', 'Cupcake', 'Pie', 'Popcorn', 'French Fries', 'Egg',
+
+  // Transportation
+  'Car', 'Truck', 'Bus', 'Bicycle', 'Motorcycle', 'Train', 'Airplane', 'Helicopter', 'Boat', 'Ship',
+  'Sailboat', 'Rocket', 'Skateboard', 'Scooter', 'Hot Air Balloon', 'Submarine', 'Tractor', 'Fire Truck', 'Ambulance', 'Police Car',
+
+  // Nature
+  'Tree', 'Flower', 'Sun', 'Moon', 'Star', 'Cloud', 'Mountain', 'Ocean', 'River', 'Lake',
+  'Rainbow', 'Snowflake', 'Leaf', 'Mushroom', 'Cactus', 'Palm Tree', 'Pine Tree', 'Rose', 'Daisy', 'Sunflower',
+
+  // Buildings & Structures
+  'House', 'Castle', 'Tower', 'Bridge', 'Lighthouse', 'Barn', 'Church', 'School', 'Hospital', 'Store',
+  'Apartment', 'Skyscraper', 'Windmill', 'Tent', 'Igloo', 'Pyramid', 'Fence', 'Gate', 'Door', 'Window',
+
+  // Household Objects
+  'Chair', 'Table', 'Bed', 'Lamp', 'Clock', 'Mirror', 'Picture Frame', 'Vase', 'Cup', 'Plate',
+  'Fork', 'Spoon', 'Knife', 'Bowl', 'Pot', 'Pan', 'Bottle', 'Book', 'Pillow', 'Blanket',
+  'Couch', 'TV', 'Computer', 'Phone', 'Remote Control', 'Trash Can', 'Bucket', 'Broom', 'Vacuum', 'Washing Machine',
+
+  // Tools & Objects
+  'Hammer', 'Screwdriver', 'Wrench', 'Saw', 'Drill', 'Scissors', 'Pencil', 'Pen', 'Paintbrush', 'Ruler',
+  'Stapler', 'Tape', 'Glue', 'Paper', 'Envelope', 'Stamp', 'Key', 'Lock', 'Rope', 'Chain',
+
+  // Clothing & Accessories
+  'Hat', 'Shirt', 'Pants', 'Dress', 'Shoes', 'Boots', 'Socks', 'Gloves', 'Scarf', 'Tie',
+  'Belt', 'Watch', 'Ring', 'Necklace', 'Earrings', 'Sunglasses', 'Umbrella', 'Backpack', 'Purse', 'Wallet',
+
+  // Sports & Recreation
+  'Ball', 'Baseball', 'Basketball', 'Football', 'Soccer Ball', 'Tennis Ball', 'Golf Ball', 'Bowling Ball', 'Frisbee', 'Kite',
+  'Bat', 'Racket', 'Hockey Stick', 'Golf Club', 'Skateboard', 'Surfboard', 'Snowboard', 'Skis', 'Sled', 'Jump Rope',
+
+  // Musical Instruments
+  'Guitar', 'Piano', 'Drums', 'Violin', 'Trumpet', 'Flute', 'Saxophone', 'Microphone', 'Speaker', 'Headphones',
+
+  // Shapes & Symbols
+  'Heart', 'Star', 'Circle', 'Square', 'Triangle', 'Diamond', 'Arrow', 'Cross', 'Checkmark', 'Question Mark',
 ];
+
+const adjectives = [
+  'Big', 'Small', 'Tall', 'Short', 'Wide', 'Narrow', 'Long', 'Round', 'Square', 'Flat',
+  'Curved', 'Pointy', 'Smooth', 'Rough', 'Shiny', 'Dull', 'Bright', 'Dark', 'Colorful', 'Plain',
+  'Old', 'New', 'Fancy', 'Simple', 'Broken', 'Fixed', 'Open', 'Closed', 'Full', 'Empty',
+];
+
+// Generate drawing prompts by combining adjectives with nouns (50% chance)
+// or just using nouns alone (50% chance)
+export const drawingPrompts = objectNouns.flatMap(noun => {
+  const prompts = [noun]; // Always include the plain noun
+
+  // Add a few adjective combinations for variety
+  const randomAdjectives = adjectives.slice(0, 3);
+  randomAdjectives.forEach(adj => {
+    prompts.push(`${adj} ${noun}`);
+  });
+
+  return prompts;
+});
 
 // Story prompts for Story Remix
 export const storyPrompts = [

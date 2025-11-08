@@ -15,7 +15,7 @@ export const SecretArtist: React.FC<SecretArtistProps> = ({ players, maxRounds, 
   const [state, setState] = useState<SecretArtistState>(() => ({
     phase: 'setup',
     prompt: randomItem(drawingPrompts),
-    secretArtistId: Math.floor(Math.random() * players.length),
+    secretArtistId: players[Math.floor(Math.random() * players.length)].id,
     drawings: {},
     currentDrawer: null,
     votes: {},
@@ -23,52 +23,76 @@ export const SecretArtist: React.FC<SecretArtistProps> = ({ players, maxRounds, 
     maxRounds,
   }));
 
-  const [playerOrder, setPlayerOrder] = useState<number[]>([]);
-  const [revealSecret, setRevealSecret] = useState(false);
-  const [drawing, setDrawing] = useState('');
+  const [currentRevealPlayer, setCurrentRevealPlayer] = useState(0);
+  const [showingPrompts, setShowingPrompts] = useState(true);
+  const [votingOrder, setVotingOrder] = useState<number[]>([]);
+  const [currentVoterIndex, setCurrentVoterIndex] = useState(0);
+  const [drawingTimer, setDrawingTimer] = useState(90); // 90 seconds to draw
 
+  // Setup phase - wait then move to drawing (prompt reveal)
   useEffect(() => {
     if (state.phase === 'setup') {
-      setPlayerOrder(shuffle(players.map(p => p.id)));
-      setTimeout(() => {
-        setState(prev => ({ ...prev, phase: 'drawing', currentDrawer: 0 }));
+      const timer = setTimeout(() => {
+        setState(prev => ({ ...prev, phase: 'drawing' }));
+        setCurrentRevealPlayer(0);
+        setShowingPrompts(true);
       }, 5000);
+      return () => clearTimeout(timer);
     }
-  }, [state.phase, players]);
+  }, [state.phase]);
 
-  const handleRevealPrompt = () => {
-    setRevealSecret(true);
+  // Drawing phase timer (only when not showing prompts)
+  useEffect(() => {
+    if (state.phase === 'drawing' && !showingPrompts && drawingTimer > 0) {
+      const timer = setTimeout(() => setDrawingTimer(prev => prev - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (state.phase === 'drawing' && !showingPrompts && drawingTimer === 0) {
+      handleStartVoting();
+    }
+  }, [state.phase, showingPrompts, drawingTimer]);
+
+  const handleNextReveal = () => {
+    if (currentRevealPlayer < players.length - 1) {
+      setCurrentRevealPlayer(prev => prev + 1);
+    } else {
+      setShowingPrompts(false);
+      setDrawingTimer(90);
+    }
   };
 
-  const handleDrawingSubmit = () => {
-    if (state.currentDrawer === null) return;
+  const handleStartVoting = () => {
+    // Create voting order: all players except the secret artist, in random order
+    const eligibleVoters = players
+      .filter(p => p.id !== state.secretArtistId)
+      .map(p => p.id);
+    const randomOrder = shuffle(eligibleVoters);
 
-    const playerId = playerOrder[state.currentDrawer];
-    setState(prev => ({
-      ...prev,
-      drawings: { ...prev.drawings, [playerId]: drawing },
-    }));
-    setDrawing('');
-
-    if (state.currentDrawer < playerOrder.length - 1) {
-      setState(prev => ({
-        ...prev,
-        currentDrawer: prev.currentDrawer! + 1,
-      }));
-    } else {
-      setState(prev => ({ ...prev, phase: 'voting', currentDrawer: null }));
-    }
+    setVotingOrder(randomOrder);
+    setCurrentVoterIndex(0);
+    setState(prev => ({ ...prev, phase: 'voting', votes: {} }));
   };
 
   const handleVote = (votedForId: number) => {
+    const voterId = votingOrder[currentVoterIndex];
+
     setState(prev => ({
       ...prev,
-      votes: { ...prev.votes, [prev.votes ? Object.keys(prev.votes).length : 0]: votedForId },
+      votes: { ...prev.votes, [voterId]: votedForId },
     }));
 
-    if (Object.keys(state.votes).length + 1 >= players.length - 1) {
-      setState(prev => ({ ...prev, phase: 'reveal' }));
+    if (currentVoterIndex < votingOrder.length - 1) {
+      setCurrentVoterIndex(prev => prev + 1);
+    } else {
+      // All votes are in, calculate scores and move to reveal
+      calculateScores();
     }
+  };
+
+  const calculateScores = () => {
+    setState(prev => {
+      const newPhase = 'reveal';
+      return { ...prev, phase: newPhase };
+    });
   };
 
   const handleNextRound = () => {
@@ -76,26 +100,46 @@ export const SecretArtist: React.FC<SecretArtistProps> = ({ players, maxRounds, 
       setState({
         phase: 'setup',
         prompt: randomItem(drawingPrompts),
-        secretArtistId: Math.floor(Math.random() * players.length),
+        secretArtistId: players[Math.floor(Math.random() * players.length)].id,
         drawings: {},
         currentDrawer: null,
         votes: {},
         round: state.round + 1,
         maxRounds: state.maxRounds,
       });
-      setRevealSecret(false);
+      setCurrentRevealPlayer(0);
+      setShowingPrompts(true);
+      setVotingOrder([]);
+      setCurrentVoterIndex(0);
+      setDrawingTimer(90);
     } else {
       setState(prev => ({ ...prev, phase: 'end' }));
     }
   };
 
   const handleEndGame = () => {
+    // Calculate final scores based on all votes from this round
     const updatedPlayers = players.map(p => {
-      const votesReceived = Object.values(state.votes).filter(v => v === p.id).length;
-      const isSecretArtist = p.id === state.secretArtistId;
-      const points = isSecretArtist ? (votesReceived > players.length / 2 ? 0 : 10) : votesReceived;
+      let points = 0;
+
+      // Check each vote
+      Object.entries(state.votes).forEach(([voterId, votedForId]) => {
+        if (votedForId === state.secretArtistId) {
+          // Correct guess - voter gets 1 point
+          if (parseInt(voterId) === p.id) {
+            points += 1;
+          }
+        } else {
+          // Wrong guess - secret artist gets 1 point
+          if (p.id === state.secretArtistId) {
+            points += 1;
+          }
+        }
+      });
+
       return { ...p, score: p.score + points };
     });
+
     onGameEnd(updatedPlayers);
   };
 
@@ -105,80 +149,113 @@ export const SecretArtist: React.FC<SecretArtistProps> = ({ players, maxRounds, 
         <h2 className="game__title">🎨 Secret Artist</h2>
         <Card className="game__info">
           <h3>Game Rules</h3>
-          <p>Each player will draw the same prompt, except for ONE player - the Secret Artist!</p>
-          <p>The Secret Artist doesn't know what to draw and must blend in.</p>
-          <p>After everyone draws, vote for who you think the Secret Artist is!</p>
+          <p>📝 Each player will receive a prompt and draw it on their WHITEBOARD.</p>
+          <p>🎭 ONE player is the Secret Artist - they won't know what to draw!</p>
+          <p>🖌️ The Secret Artist must draw something to blend in without knowing the prompt.</p>
+          <p>🗳️ After drawing, players vote one-by-one for who they think the Secret Artist is.</p>
+          <p>📊 <strong>Scoring:</strong></p>
+          <ul style={{ textAlign: 'left', marginLeft: '20px' }}>
+            <li>✅ Guess correctly: You get 1 point</li>
+            <li>❌ Guess wrong: Secret Artist gets 1 point</li>
+          </ul>
           <p className="game__round">Round {state.round} of {state.maxRounds}</p>
         </Card>
-        <p className="game__status">Starting game...</p>
+        <p className="game__status">Get your whiteboards ready...</p>
       </div>
     );
   }
 
-  if (state.phase === 'drawing' && state.currentDrawer !== null) {
-    const currentPlayerId = playerOrder[state.currentDrawer];
-    const currentPlayer = players.find(p => p.id === currentPlayerId);
-    const isSecretArtist = currentPlayerId === state.secretArtistId;
+  if (state.phase === 'drawing' && showingPrompts) {
+    const currentPlayer = players[currentRevealPlayer];
+    const isSecretArtist = currentPlayer.id === state.secretArtistId;
 
     return (
       <div className="game">
         <h2 className="game__title">🎨 Secret Artist</h2>
         <p className="game__round">Round {state.round} of {state.maxRounds}</p>
         <Card className="game__drawing-card">
-          <h3>Current Drawer: {currentPlayer?.name}</h3>
-          {!revealSecret && (
-            <div>
-              <p>Ready to see your prompt?</p>
-              <Button onClick={handleRevealPrompt}>Show My Prompt</Button>
-            </div>
-          )}
-          {revealSecret && (
-            <div>
-              <div className="game__prompt">
-                {isSecretArtist ? (
-                  <p className="game__secret">You are the SECRET ARTIST! Draw something to blend in!</p>
-                ) : (
-                  <p className="game__normal">Draw: <strong>{state.prompt}</strong></p>
-                )}
-              </div>
-              <p>Describe what you drew (host will write it down):</p>
-              <textarea
-                className="game__textarea"
-                value={drawing}
-                onChange={(e) => setDrawing(e.target.value)}
-                placeholder="Describe your drawing in a few words..."
-                rows={4}
-              />
-              <Button onClick={handleDrawingSubmit} disabled={!drawing.trim()}>
-                Submit Drawing
+          <h3>Current Player: {currentPlayer?.name}</h3>
+          <p className="game__hint">👀 Other players: Look away!</p>
+
+          <div className="game__prompt" style={{ margin: '40px 0', padding: '30px', fontSize: '24px' }}>
+            {isSecretArtist ? (
+              <p className="game__secret" style={{ color: '#ef4444', fontWeight: 'bold' }}>
+                🎭 You are the SECRET ARTIST!<br />
+                Draw something to blend in!
+              </p>
+            ) : (
+              <p className="game__normal" style={{ fontSize: '32px', fontWeight: 'bold' }}>
+                Draw: {state.prompt}
+              </p>
+            )}
+          </div>
+
+          <Button onClick={handleNextReveal} size="large">
+            {currentRevealPlayer < players.length - 1 ? 'Next Player' : 'Start Drawing!'}
+          </Button>
+
+          <p className="game__progress">
+            Player {currentRevealPlayer + 1} of {players.length}
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
+  if (state.phase === 'drawing' && !showingPrompts) {
+    const minutes = Math.floor(drawingTimer / 60);
+    const seconds = drawingTimer % 60;
+
+    return (
+      <div className="game">
+        <h2 className="game__title">🎨 Secret Artist - Drawing Time!</h2>
+        <p className="game__round">Round {state.round} of {state.maxRounds}</p>
+        <Card className="game__drawing-card">
+          <h3>🖌️ Draw on your whiteboards!</h3>
+          <p style={{ fontSize: '18px', margin: '20px 0' }}>
+            Everyone draw your prompt on your physical whiteboard.
+          </p>
+
+          <div style={{
+            fontSize: '64px',
+            fontWeight: 'bold',
+            margin: '40px 0',
+            color: drawingTimer <= 10 ? '#ef4444' : '#3b82f6'
+          }}>
+            {minutes}:{seconds.toString().padStart(2, '0')}
+          </div>
+
+          <p className="game__hint">The prompt is: <strong>{state.prompt}</strong></p>
+          <p style={{ marginTop: '20px', color: '#6b7280' }}>
+            (The Secret Artist doesn't know this!)
+          </p>
+
+          {drawingTimer > 0 && (
+            <div style={{ marginTop: '20px' }}>
+              <Button onClick={handleStartVoting} variant="secondary">
+                Skip Timer & Start Voting
               </Button>
             </div>
           )}
         </Card>
-        <p className="game__progress">
-          Player {state.currentDrawer + 1} of {playerOrder.length}
-        </p>
       </div>
     );
   }
 
   if (state.phase === 'voting') {
+    const currentVoterId = votingOrder[currentVoterIndex];
+    const currentVoter = players.find(p => p.id === currentVoterId);
+
     return (
       <div className="game">
         <h2 className="game__title">🎨 Secret Artist - Voting</h2>
         <p className="game__round">Round {state.round} of {state.maxRounds}</p>
         <Card className="game__voting-card">
-          <h3>All Drawings Complete!</h3>
-          <p>Who do you think is the Secret Artist?</p>
+          <h3>Current Voter: {currentVoter?.name}</h3>
+          <p>Look at all the whiteboards. Who do you think is the Secret Artist?</p>
           <p className="game__hint">The prompt was: <strong>{state.prompt}</strong></p>
-          <div className="game__drawings">
-            {players.map(player => (
-              <div key={player.id} className="game__drawing-item">
-                <strong>{player.name}:</strong> {state.drawings[player.id] || 'No drawing'}
-              </div>
-            ))}
-          </div>
-          <div className="game__vote-buttons">
+
+          <div className="game__vote-buttons" style={{ marginTop: '30px', display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center' }}>
             {players.map(player => (
               <Button
                 key={player.id}
@@ -189,45 +266,102 @@ export const SecretArtist: React.FC<SecretArtistProps> = ({ players, maxRounds, 
               </Button>
             ))}
           </div>
+
+          <p className="game__progress" style={{ marginTop: '30px' }}>
+            Vote {currentVoterIndex + 1} of {votingOrder.length}
+          </p>
         </Card>
-        <p className="game__status">
-          Votes: {Object.keys(state.votes).length} / {players.length}
-        </p>
       </div>
     );
   }
 
   if (state.phase === 'reveal') {
     const secretArtist = players.find(p => p.id === state.secretArtistId);
-    const voteCount: { [key: number]: number } = {};
-    Object.values(state.votes).forEach(votedId => {
-      voteCount[votedId] = (voteCount[votedId] || 0) + 1;
+
+    // Calculate points for this round
+    const roundPoints: { [key: number]: number } = {};
+    players.forEach(p => { roundPoints[p.id] = 0; });
+
+    Object.entries(state.votes).forEach(([voterId, votedForId]) => {
+      if (votedForId === state.secretArtistId) {
+        // Correct guess
+        roundPoints[parseInt(voterId)] = (roundPoints[parseInt(voterId)] || 0) + 1;
+      } else {
+        // Wrong guess
+        roundPoints[state.secretArtistId] = (roundPoints[state.secretArtistId] || 0) + 1;
+      }
     });
-    const mostVoted = Object.entries(voteCount).sort((a, b) => b[1] - a[1])[0];
-    const caught = mostVoted && parseInt(mostVoted[0]) === state.secretArtistId;
+
+    const correctGuesses = Object.values(state.votes).filter(v => v === state.secretArtistId).length;
+    const wrongGuesses = Object.values(state.votes).length - correctGuesses;
 
     return (
       <div className="game">
         <h2 className="game__title">🎨 Secret Artist - Results</h2>
         <p className="game__round">Round {state.round} of {state.maxRounds}</p>
         <Card className="game__results">
-          <h3>The Secret Artist was... {secretArtist?.name}!</h3>
-          <p className={caught ? 'game__caught' : 'game__escaped'}>
-            {caught ? '🎉 The Secret Artist was caught!' : '😈 The Secret Artist escaped!'}
-          </p>
-          <h4>Vote Results:</h4>
-          {Object.entries(voteCount).map(([playerId, count]) => {
-            const player = players.find(p => p.id === parseInt(playerId));
-            return (
-              <div key={playerId} className="game__vote-result">
-                {player?.name}: {count} vote{count !== 1 ? 's' : ''}
-              </div>
-            );
-          })}
+          <h3 style={{ fontSize: '28px', marginBottom: '20px' }}>
+            The Secret Artist was... {secretArtist?.name}! 🎭
+          </h3>
+
+          <div style={{ margin: '30px 0', padding: '20px', background: '#f3f4f6', borderRadius: '8px' }}>
+            <h4>Round Results:</h4>
+            <p style={{ fontSize: '18px', margin: '10px 0' }}>
+              ✅ Correct guesses: {correctGuesses}
+            </p>
+            <p style={{ fontSize: '18px', margin: '10px 0' }}>
+              ❌ Wrong guesses: {wrongGuesses}
+            </p>
+          </div>
+
+          <h4>Points Earned This Round:</h4>
+          <div style={{ marginTop: '15px' }}>
+            {players.map(player => {
+              const points = roundPoints[player.id] || 0;
+              if (points > 0) {
+                return (
+                  <div key={player.id} style={{
+                    padding: '10px',
+                    margin: '5px 0',
+                    background: player.id === state.secretArtistId ? '#fee2e2' : '#d1fae5',
+                    borderRadius: '6px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <span>
+                      {player.name}
+                      {player.id === state.secretArtistId && ' 🎭'}
+                    </span>
+                    <span style={{ fontWeight: 'bold' }}>+{points} point{points !== 1 ? 's' : ''}</span>
+                  </div>
+                );
+              }
+              return null;
+            })}
+          </div>
+
+          <h4 style={{ marginTop: '30px' }}>All Votes:</h4>
+          <div style={{ marginTop: '15px' }}>
+            {Object.entries(state.votes).map(([voterId, votedForId]) => {
+              const voter = players.find(p => p.id === parseInt(voterId));
+              const votedFor = players.find(p => p.id === votedForId);
+              const isCorrect = votedForId === state.secretArtistId;
+
+              return (
+                <div key={voterId} style={{ padding: '8px', margin: '3px 0' }}>
+                  {voter?.name} voted for {votedFor?.name} {isCorrect ? '✅' : '❌'}
+                </div>
+              );
+            })}
+          </div>
         </Card>
-        <Button onClick={handleNextRound}>
-          {state.round < state.maxRounds ? 'Next Round' : 'View Final Scores'}
-        </Button>
+
+        <div style={{ marginTop: '20px' }}>
+          <Button onClick={handleNextRound} size="large">
+            {state.round < state.maxRounds ? 'Next Round' : 'View Final Scores'}
+          </Button>
+        </div>
       </div>
     );
   }
@@ -248,7 +382,7 @@ export const SecretArtist: React.FC<SecretArtistProps> = ({ players, maxRounds, 
               </div>
             ))}
         </Card>
-        <Button onClick={handleEndGame}>Return to Menu</Button>
+        <Button onClick={handleEndGame} size="large">Return to Menu</Button>
       </div>
     );
   }
