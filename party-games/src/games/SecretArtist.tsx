@@ -152,8 +152,8 @@ export const SecretArtist: React.FC<SecretArtistProps> = ({ players, maxRounds, 
         <Card className="game__info">
           <h3>Game Rules</h3>
           <p>📝 Each player will receive a prompt and draw it on their WHITEBOARD.</p>
-          <p>🎭 ONE player is the Secret Artist - they won't know what to draw!</p>
-          <p>🖌️ The Secret Artist must draw something to blend in without knowing the prompt.</p>
+          <p>🎭 ONE player is the Secret Artist - they get a SIMILAR but DIFFERENT prompt!</p>
+          <p>🖌️ The Secret Artist doesn't know they're different and draws what they see.</p>
           <p>🗳️ After drawing, players vote one-by-one for who they think the Secret Artist is.</p>
           <p>📊 <strong>Scoring:</strong></p>
           <ul style={{ textAlign: 'left', marginLeft: '20px' }}>
@@ -180,20 +180,9 @@ export const SecretArtist: React.FC<SecretArtistProps> = ({ players, maxRounds, 
           <p className="game__hint">👀 Other players: Look away!</p>
 
           <div className="game__prompt" style={{ margin: '40px 0', padding: '30px', fontSize: '24px' }}>
-            {isSecretArtist ? (
-              <>
-                <p className="game__secret" style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '24px', marginBottom: '20px' }}>
-                  🎭 You are the SECRET ARTIST!
-                </p>
-                <p className="game__normal" style={{ fontSize: '32px', fontWeight: 'bold' }}>
-                  Draw: {state.prompt.secret}
-                </p>
-              </>
-            ) : (
-              <p className="game__normal" style={{ fontSize: '32px', fontWeight: 'bold' }}>
-                Draw: {state.prompt.normal}
-              </p>
-            )}
+            <p className="game__normal" style={{ fontSize: '32px', fontWeight: 'bold' }}>
+              Draw: {isSecretArtist ? state.prompt.secret : state.prompt.normal}
+            </p>
           </div>
 
           <Button onClick={handleNextReveal} size="large">
@@ -231,9 +220,9 @@ export const SecretArtist: React.FC<SecretArtistProps> = ({ players, maxRounds, 
             {minutes}:{seconds.toString().padStart(2, '0')}
           </div>
 
-          <p className="game__hint">The prompt is: <strong>{state.prompt.normal}</strong></p>
+          <p className="game__hint">Remember your prompt and draw it!</p>
           <p style={{ marginTop: '20px', color: '#6b7280' }}>
-            (The Secret Artist has a different prompt!)
+            (One player has a slightly different prompt - but they don't know it!)
           </p>
 
           {drawingTimer > 0 && (
