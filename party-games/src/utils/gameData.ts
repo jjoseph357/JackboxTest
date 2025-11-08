@@ -1,70 +1,213 @@
-// Drawing prompts for Secret Artist - Simple real-life objects
-const objectNouns = [
-  // Animals
-  'Cat', 'Dog', 'Bird', 'Fish', 'Horse', 'Cow', 'Pig', 'Chicken', 'Duck', 'Rabbit',
-  'Turtle', 'Frog', 'Snake', 'Bear', 'Lion', 'Tiger', 'Elephant', 'Giraffe', 'Monkey', 'Penguin',
-  'Owl', 'Eagle', 'Butterfly', 'Bee', 'Spider', 'Shark', 'Whale', 'Dolphin', 'Octopus', 'Crab',
+// Drawing prompts for Secret Artist - Easy to identify, hard to draw well
+export const drawingPrompts = [
+  // Actions & Activities
+  'Someone sleeping',
+  'Running',
+  'Swimming',
+  'Dancing',
+  'Jumping',
+  'Eating',
+  'Drinking',
+  'Reading a book',
+  'Watching TV',
+  'Playing video games',
+  'Texting on a phone',
+  'Taking a selfie',
+  'Cooking',
+  'Driving a car',
+  'Riding a bike',
+  'Skateboarding',
+  'Brushing teeth',
+  'Taking a shower',
+  'Walking a dog',
+  'Playing catch',
+  'Hugging',
+  'Waving hello',
+  'Pointing',
+  'Clapping',
+  'Sneezing',
+  'Yawning',
+  'Crying',
+  'Laughing',
+  'Thinking',
+  'Singing',
 
-  // Food & Drink
-  'Pizza', 'Burger', 'Hot Dog', 'Taco', 'Sandwich', 'Ice Cream', 'Cookie', 'Cake', 'Donut', 'Apple',
-  'Banana', 'Orange', 'Strawberry', 'Watermelon', 'Grapes', 'Carrot', 'Broccoli', 'Corn', 'Bread', 'Cheese',
-  'Coffee', 'Tea', 'Soda', 'Milk', 'Water Bottle', 'Cupcake', 'Pie', 'Popcorn', 'French Fries', 'Egg',
+  // Emotions & Expressions
+  'A happy person',
+  'A sad person',
+  'An angry person',
+  'A scared person',
+  'A surprised person',
+  'Someone confused',
+  'Someone excited',
+  'Someone tired',
+  'Someone embarrassed',
+  'Someone proud',
+
+  // Animals doing things
+  'A cat sleeping',
+  'A dog playing',
+  'A bird flying',
+  'A fish swimming',
+  'A monkey climbing',
+  'An elephant spraying water',
+  'A penguin sliding',
+  'A snake slithering',
+  'A bear waving',
+  'A frog jumping',
+
+  // Situations & Scenes
+  'A birthday party',
+  'A picnic',
+  'A camping trip',
+  'A beach day',
+  'A rainy day',
+  'A snowy day',
+  'Sunset',
+  'Sunrise',
+  'A rainbow',
+  'Fireworks',
+  'A concert',
+  'A wedding',
+  'A graduation',
+  'Halloween',
+  'Christmas morning',
+  'A snowman',
+  'Building a sandcastle',
+  'Flying a kite',
+  'A bonfire',
+  'Stargazing',
+
+  // Sports & Games
+  'Playing basketball',
+  'Playing soccer',
+  'Playing baseball',
+  'Playing tennis',
+  'Playing golf',
+  'Playing football',
+  'Bowling',
+  'Ice skating',
+  'Skiing',
+  'Surfing',
+  'Rock climbing',
+  'Skateboarding',
+  'Rollerblading',
+  'Hopscotch',
+  'Jump rope',
+  'Tug of war',
+
+  // Jobs & Professions
+  'A doctor',
+  'A teacher',
+  'A firefighter',
+  'A police officer',
+  'A chef',
+  'An astronaut',
+  'A pilot',
+  'A dentist',
+  'A musician',
+  'A painter',
+  'A construction worker',
+  'A mail carrier',
+  'A farmer',
+
+  // Objects in use
+  'An umbrella in the rain',
+  'A balloon floating',
+  'A kite flying',
+  'A campfire',
+  'A birthday cake',
+  'An ice cream cone melting',
+  'A broken window',
+  'A ringing phone',
+  'A television',
+  'A computer',
+  'Headphones',
+  'A camera',
+  'Sunglasses',
+  'A backpack',
+
+  // Nature & Weather
+  'A tree',
+  'A flower',
+  'Mountains',
+  'The ocean',
+  'A river',
+  'A waterfall',
+  'Lightning',
+  'A tornado',
+  'Clouds',
+  'The sun',
+  'The moon',
+  'Stars',
+  'A cactus',
+
+  // Food & Meals
+  'Eating pizza',
+  'A hamburger',
+  'A hot dog',
+  'Ice cream',
+  'A birthday cake',
+  'Spaghetti',
+  'A sandwich',
+  'Popcorn',
+  'French fries',
+  'A taco',
+  'Breakfast',
+  'Dinner time',
 
   // Transportation
-  'Car', 'Truck', 'Bus', 'Bicycle', 'Motorcycle', 'Train', 'Airplane', 'Helicopter', 'Boat', 'Ship',
-  'Sailboat', 'Rocket', 'Skateboard', 'Scooter', 'Hot Air Balloon', 'Submarine', 'Tractor', 'Fire Truck', 'Ambulance', 'Police Car',
+  'A car',
+  'A bicycle',
+  'An airplane',
+  'A boat',
+  'A train',
+  'A helicopter',
+  'A rocket',
+  'A motorcycle',
+  'A school bus',
+  'A fire truck',
 
-  // Nature
-  'Tree', 'Flower', 'Sun', 'Moon', 'Star', 'Cloud', 'Mountain', 'Ocean', 'River', 'Lake',
-  'Rainbow', 'Snowflake', 'Leaf', 'Mushroom', 'Cactus', 'Palm Tree', 'Pine Tree', 'Rose', 'Daisy', 'Sunflower',
+  // Buildings & Places
+  'A house',
+  'A school',
+  'A hospital',
+  'A castle',
+  'A lighthouse',
+  'A church',
+  'A barn',
+  'The Eiffel Tower',
+  'A pyramid',
+  'A bridge',
 
-  // Buildings & Structures
-  'House', 'Castle', 'Tower', 'Bridge', 'Lighthouse', 'Barn', 'Church', 'School', 'Hospital', 'Store',
-  'Apartment', 'Skyscraper', 'Windmill', 'Tent', 'Igloo', 'Pyramid', 'Fence', 'Gate', 'Door', 'Window',
+  // Household Items
+  'A chair',
+  'A table',
+  'A bed',
+  'A lamp',
+  'A clock',
+  'A mirror',
+  'A picture frame',
+  'A door',
+  'A window',
+  'Stairs',
 
-  // Household Objects
-  'Chair', 'Table', 'Bed', 'Lamp', 'Clock', 'Mirror', 'Picture Frame', 'Vase', 'Cup', 'Plate',
-  'Fork', 'Spoon', 'Knife', 'Bowl', 'Pot', 'Pan', 'Bottle', 'Book', 'Pillow', 'Blanket',
-  'Couch', 'TV', 'Computer', 'Phone', 'Remote Control', 'Trash Can', 'Bucket', 'Broom', 'Vacuum', 'Washing Machine',
-
-  // Tools & Objects
-  'Hammer', 'Screwdriver', 'Wrench', 'Saw', 'Drill', 'Scissors', 'Pencil', 'Pen', 'Paintbrush', 'Ruler',
-  'Stapler', 'Tape', 'Glue', 'Paper', 'Envelope', 'Stamp', 'Key', 'Lock', 'Rope', 'Chain',
-
-  // Clothing & Accessories
-  'Hat', 'Shirt', 'Pants', 'Dress', 'Shoes', 'Boots', 'Socks', 'Gloves', 'Scarf', 'Tie',
-  'Belt', 'Watch', 'Ring', 'Necklace', 'Earrings', 'Sunglasses', 'Umbrella', 'Backpack', 'Purse', 'Wallet',
-
-  // Sports & Recreation
-  'Ball', 'Baseball', 'Basketball', 'Football', 'Soccer Ball', 'Tennis Ball', 'Golf Ball', 'Bowling Ball', 'Frisbee', 'Kite',
-  'Bat', 'Racket', 'Hockey Stick', 'Golf Club', 'Skateboard', 'Surfboard', 'Snowboard', 'Skis', 'Sled', 'Jump Rope',
-
-  // Musical Instruments
-  'Guitar', 'Piano', 'Drums', 'Violin', 'Trumpet', 'Flute', 'Saxophone', 'Microphone', 'Speaker', 'Headphones',
-
-  // Shapes & Symbols
-  'Heart', 'Star', 'Circle', 'Square', 'Triangle', 'Diamond', 'Arrow', 'Cross', 'Checkmark', 'Question Mark',
+  // Miscellaneous
+  'A ghost',
+  'A robot',
+  'A superhero',
+  'A princess',
+  'A king',
+  'A pirate',
+  'A cowboy',
+  'A dinosaur',
+  'A dragon',
+  'An alien',
+  'A monster',
+  'A wizard',
+  'A mermaid',
+  'A unicorn',
 ];
-
-const adjectives = [
-  'Big', 'Small', 'Tall', 'Short', 'Wide', 'Narrow', 'Long', 'Round', 'Square', 'Flat',
-  'Curved', 'Pointy', 'Smooth', 'Rough', 'Shiny', 'Dull', 'Bright', 'Dark', 'Colorful', 'Plain',
-  'Old', 'New', 'Fancy', 'Simple', 'Broken', 'Fixed', 'Open', 'Closed', 'Full', 'Empty',
-];
-
-// Generate drawing prompts by combining adjectives with nouns (50% chance)
-// or just using nouns alone (50% chance)
-export const drawingPrompts = objectNouns.flatMap(noun => {
-  const prompts = [noun]; // Always include the plain noun
-
-  // Add a few adjective combinations for variety
-  const randomAdjectives = adjectives.slice(0, 3);
-  randomAdjectives.forEach(adj => {
-    prompts.push(`${adj} ${noun}`);
-  });
-
-  return prompts;
-});
 
 // Story prompts for Story Remix
 export const storyPrompts = [

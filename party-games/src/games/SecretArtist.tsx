@@ -29,15 +29,12 @@ export const SecretArtist: React.FC<SecretArtistProps> = ({ players, maxRounds, 
   const [currentVoterIndex, setCurrentVoterIndex] = useState(0);
   const [drawingTimer, setDrawingTimer] = useState(90); // 90 seconds to draw
 
-  // Setup phase - wait then move to drawing (prompt reveal)
+  // Setup phase - immediately move to drawing (prompt reveal)
   useEffect(() => {
     if (state.phase === 'setup') {
-      const timer = setTimeout(() => {
-        setState(prev => ({ ...prev, phase: 'drawing' }));
-        setCurrentRevealPlayer(0);
-        setShowingPrompts(true);
-      }, 5000);
-      return () => clearTimeout(timer);
+      setState(prev => ({ ...prev, phase: 'drawing' }));
+      setCurrentRevealPlayer(0);
+      setShowingPrompts(true);
     }
   }, [state.phase]);
 
@@ -96,6 +93,31 @@ export const SecretArtist: React.FC<SecretArtistProps> = ({ players, maxRounds, 
   };
 
   const handleNextRound = () => {
+    // Calculate and apply scores for this round
+    const updatedPlayers = players.map(p => {
+      let points = 0;
+
+      // Check each vote
+      Object.entries(state.votes).forEach(([voterId, votedForId]) => {
+        if (votedForId === state.secretArtistId) {
+          // Correct guess - voter gets 1 point
+          if (parseInt(voterId) === p.id) {
+            points += 1;
+          }
+        } else {
+          // Wrong guess - secret artist gets 1 point
+          if (p.id === state.secretArtistId) {
+            points += 1;
+          }
+        }
+      });
+
+      return { ...p, score: p.score + points };
+    });
+
+    // Update players array with new scores
+    players.splice(0, players.length, ...updatedPlayers);
+
     if (state.round < state.maxRounds) {
       setState({
         phase: 'setup',
@@ -118,29 +140,9 @@ export const SecretArtist: React.FC<SecretArtistProps> = ({ players, maxRounds, 
   };
 
   const handleEndGame = () => {
-    // Calculate final scores based on all votes from this round
-    const updatedPlayers = players.map(p => {
-      let points = 0;
-
-      // Check each vote
-      Object.entries(state.votes).forEach(([voterId, votedForId]) => {
-        if (votedForId === state.secretArtistId) {
-          // Correct guess - voter gets 1 point
-          if (parseInt(voterId) === p.id) {
-            points += 1;
-          }
-        } else {
-          // Wrong guess - secret artist gets 1 point
-          if (p.id === state.secretArtistId) {
-            points += 1;
-          }
-        }
-      });
-
-      return { ...p, score: p.score + points };
-    });
-
-    onGameEnd(updatedPlayers);
+    // Scores have already been applied in handleNextRound
+    // Just pass the players back to the parent
+    onGameEnd(players);
   };
 
   if (state.phase === 'setup') {
@@ -323,11 +325,13 @@ export const SecretArtist: React.FC<SecretArtistProps> = ({ players, maxRounds, 
                   <div key={player.id} style={{
                     padding: '10px',
                     margin: '5px 0',
-                    background: player.id === state.secretArtistId ? '#fee2e2' : '#d1fae5',
+                    background: player.id === state.secretArtistId ? '#fecaca' : '#86efac',
                     borderRadius: '6px',
                     display: 'flex',
                     justifyContent: 'space-between',
-                    alignItems: 'center'
+                    alignItems: 'center',
+                    color: '#000',
+                    fontWeight: '500'
                   }}>
                     <span>
                       {player.name}
