@@ -36,7 +36,7 @@ export interface DrawingPrompt {
 }
 
 export interface SecretArtistState {
-  phase: 'setup' | 'drawing' | 'voting' | 'reveal' | 'end';
+  phase: 'hostPreview' | 'setup' | 'drawing' | 'voting' | 'reveal' | 'end';
   prompt: DrawingPrompt;
   secretArtistId: number;
   drawings: { [playerId: number]: string };

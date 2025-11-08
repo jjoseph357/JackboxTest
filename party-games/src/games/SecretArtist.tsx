@@ -13,7 +13,7 @@ interface SecretArtistProps {
 
 export const SecretArtist: React.FC<SecretArtistProps> = ({ players, maxRounds, onGameEnd }) => {
   const [state, setState] = useState<SecretArtistState>(() => ({
-    phase: 'setup',
+    phase: 'hostPreview',
     prompt: randomItem(drawingPrompts),
     secretArtistId: players[Math.floor(Math.random() * players.length)].id,
     drawings: {},
@@ -28,6 +28,20 @@ export const SecretArtist: React.FC<SecretArtistProps> = ({ players, maxRounds, 
   const [votingOrder, setVotingOrder] = useState<number[]>([]);
   const [currentVoterIndex, setCurrentVoterIndex] = useState(0);
   const [drawingTimer, setDrawingTimer] = useState(90); // 90 seconds to draw
+
+  // Handler to reroll prompts (host preview)
+  const handleRerollPrompts = () => {
+    setState(prev => ({
+      ...prev,
+      prompt: randomItem(drawingPrompts),
+      secretArtistId: players[Math.floor(Math.random() * players.length)].id,
+    }));
+  };
+
+  // Handler to start the round from host preview
+  const handleStartRound = () => {
+    setState(prev => ({ ...prev, phase: 'setup' }));
+  };
 
   // Setup phase - immediately move to drawing (prompt reveal)
   useEffect(() => {
@@ -120,7 +134,7 @@ export const SecretArtist: React.FC<SecretArtistProps> = ({ players, maxRounds, 
 
     if (state.round < state.maxRounds) {
       setState({
-        phase: 'setup',
+        phase: 'hostPreview',
         prompt: randomItem(drawingPrompts),
         secretArtistId: players[Math.floor(Math.random() * players.length)].id,
         drawings: {},
@@ -144,6 +158,50 @@ export const SecretArtist: React.FC<SecretArtistProps> = ({ players, maxRounds, 
     // Just pass the players back to the parent
     onGameEnd(players);
   };
+
+  if (state.phase === 'hostPreview') {
+    const secretArtist = players.find(p => p.id === state.secretArtistId);
+
+    return (
+      <div className="game">
+        <h2 className="game__title">🎨 Secret Artist - Host Preview</h2>
+        <p className="game__round">Round {state.round} of {state.maxRounds}</p>
+        <Card className="game__info">
+          <h3>Preview Prompts</h3>
+          <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '20px' }}>
+            Review the prompts for this round. If you don't like them, click "Reroll Prompts" to get new ones.
+          </p>
+
+          <div style={{ margin: '20px 0', padding: '20px', background: '#f3f4f6', borderRadius: '8px' }}>
+            <h4 style={{ fontSize: '18px', marginBottom: '15px' }}>This Round's Prompts:</h4>
+
+            <div style={{ marginBottom: '15px', padding: '15px', background: '#dbeafe', borderRadius: '6px' }}>
+              <p style={{ fontWeight: 'bold', marginBottom: '5px' }}>Normal Prompt (for most players):</p>
+              <p style={{ fontSize: '20px', color: '#1e40af' }}>{state.prompt.normal}</p>
+            </div>
+
+            <div style={{ marginBottom: '15px', padding: '15px', background: '#fee2e2', borderRadius: '6px' }}>
+              <p style={{ fontWeight: 'bold', marginBottom: '5px' }}>Secret Artist Prompt (for {secretArtist?.name}):</p>
+              <p style={{ fontSize: '20px', color: '#dc2626' }}>{state.prompt.secret}</p>
+            </div>
+
+            <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '15px' }}>
+              ℹ️ The Secret Artist will NOT know they have a different prompt.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Button onClick={handleRerollPrompts} variant="secondary">
+              🎲 Reroll Prompts
+            </Button>
+            <Button onClick={handleStartRound} size="large">
+              ▶️ Start Round
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   if (state.phase === 'setup') {
     return (
