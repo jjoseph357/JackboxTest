@@ -11,7 +11,7 @@ interface RPSBRProps {
 }
 
 const GRID_SIZE = 1200;
-const BATTLE_DURATION = 45000; // 45 seconds
+const BATTLE_DURATION = 75000; // 45 seconds
 const SPEED_BOOST_DURATION = 3000; // 3 seconds
 
 // Mobile detection
